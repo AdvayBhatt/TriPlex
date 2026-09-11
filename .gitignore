@@ -1,0 +1,22 @@
+
+data/
+
+outputs/
+
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+#if using R
+.Rhistory
+.RData
+renv/library/
+
+#OS
+.DS_Store
+Thumbs.db
+
+#secrets
+.env
