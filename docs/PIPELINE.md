@@ -178,6 +178,29 @@ r = 0.24 — and a real pipeline would have to predict those traits first,
 imperfectly, multiplying the loss. DNA predicts yield directly at 0.186. Routing
 through an intermediate cannot create information.
 
+**Two-way field adjustment as the training target.** Simple subtraction of the
+field mean is biased under an unbalanced design, so estimating field and line
+effects jointly (alternating until stable) should give cleaner line effects. It
+does not: training on those targets is worse against either yardstick.
+
+| Trained on | vs two-way truth | vs simple truth |
+|---|---|---|
+| Simple subtraction | **0.269** | **0.186** |
+| Two-way fit | 0.241 | 0.119 |
+
+The likely reason: the two-way line effects carry no shrinkage, and with a median
+of 7 plots per line they are noisy enough that the alternation passes that noise
+back and forth between the two effect sets. A shrunk (BLUP-style) version might
+behave differently and is worth trying. The field effects are still used by
+`environment_model.py`; only the training target reverted. Available via
+`--adjust twoway`.
+
+Open question worth following up: both models score markedly higher against the
+two-way 2008 truth (0.269 vs 0.186). That may mean the two-way estimate is a
+cleaner measure of genetic merit and our real accuracy is better than the headline
+figure — but it changes the yardstick, so the noise ceiling would have to be
+re-derived for that target before claiming any improvement.
+
 **Multi-trait stacking.** Predict all 8 traits from markers, then stack their
 out-of-fold predictions to predict yield. **Does not replicate across clusters:**
 

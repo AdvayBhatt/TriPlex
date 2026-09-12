@@ -119,9 +119,46 @@ def clean(df: pd.DataFrame, min_env_lines: int, min_line_obs: int,
     return df, log
 
 
-def to_line_level(df: pd.DataFrame) -> pd.DataFrame:
-    """Subtract the field effect, then average per line."""
-    df = df.assign(YLD_ADJ=df[TRAIT] - df.groupby("ENV")[TRAIT].transform("mean"))
+def two_way_effects(df: pd.DataFrame, iters: int = 30, tol: float = 1e-4) -> pd.Series:
+    """Estimate each line's effect while simultaneously estimating field effects.
+
+    Simple subtraction of the field mean is biased when the design is unbalanced:
+    environments carry a median of only 2 populations, so a field that happened to
+    test strong families gets an inflated mean, which then unfairly penalises every
+    line grown there. Alternating between the two effects until they stop moving
+    converges to the additive fit y ~ mu + field + line.
+
+    TESTED AND NOT ADOPTED as the training target: line effects here carry no
+    shrinkage, and with a median of 7 plots per line they are noisy enough that the
+    alternation feeds that noise back and forth. Training on them scores WORSE than
+    simple subtraction against either yardstick (0.241 vs 0.269 against the two-way
+    truth; 0.119 vs 0.186 against the simple truth). Kept because environment_model.py
+    needs the field effects, and available via --adjust twoway.
+    """
+    y = df[TRAIT].to_numpy("float64")
+    env_key, line_key = df["ENV"].to_numpy(), df[ID].to_numpy()
+    mu = y.mean()
+    line_eff = pd.Series(0.0, index=pd.unique(line_key))
+    prev = None
+    for _ in range(iters):
+        resid = y - mu - line_eff.reindex(line_key).to_numpy()
+        env_eff = pd.Series(resid, index=env_key).groupby(level=0).mean()
+        resid = y - mu - env_eff.reindex(env_key).to_numpy()
+        line_eff = pd.Series(resid, index=line_key).groupby(level=0).mean()
+        cur = line_eff.to_numpy()
+        if prev is not None and np.abs(cur - prev).max() < tol:
+            break
+        prev = cur.copy()
+    return line_eff
+
+
+def to_line_level(df: pd.DataFrame, adjust: str = "simple") -> pd.DataFrame:
+    """Remove the field effect, then reduce to one row per line."""
+    if adjust == "twoway":
+        eff = two_way_effects(df)
+        df = df.assign(YLD_ADJ=df[ID].map(eff))
+    else:
+        df = df.assign(YLD_ADJ=df[TRAIT] - df.groupby("ENV")[TRAIT].transform("mean"))
     out = df.groupby(ID).agg(
         y=("YLD_ADJ", "mean"),
         n_obs=("YLD_ADJ", "size"),
@@ -216,9 +253,9 @@ def build(data_root: Path, cluster: int, out_dir: Path, args) -> None:
     print(f"  dropped, line too thin    {log['thin_lines']:>9,}")
     print(f"  kept                      {log['final']:>9,}")
 
-    lvl = to_line_level(df)
+    lvl = to_line_level(df, args.adjust)
     # Keep only lines we have DNA for -- without it there is nothing to predict from.
-    geno_path = out_dir / f"geno_C{cluster}.npz"
+    geno_path = (args.geno_dir or out_dir) / f"geno_C{cluster}.npz"
     have = pd.Index(np.load(geno_path, allow_pickle=True)["lines"])
     before = len(lvl)
     lvl = lvl[lvl[ID].isin(have)].reset_index(drop=True)
@@ -229,6 +266,7 @@ def build(data_root: Path, cluster: int, out_dir: Path, args) -> None:
     print(f"  training (<=2007): {train_mask.sum():,}")
     print(f"  held-out 2008:     {(~train_mask).sum():,}")
     print(f"  fields per line:   median {lvl.n_env.median():.0f}")
+    print(f"  field adjustment:  {args.adjust}")
     print(f"  target YLD_ADJ:    mean {lvl.y.mean():.2f}, sd {lvl.y.std():.2f} bu/acre")
 
     glog: dict = {}
@@ -258,6 +296,10 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, default=Path("data/processed"))
     ap.add_argument("--clusters", type=int, nargs="+", default=[1, 2])
     ap.add_argument("--n-components", type=int, default=50)
+    ap.add_argument("--geno-dir", type=Path, default=None,
+                    help="where geno_C{n}.npz lives (defaults to --out-dir)")
+    ap.add_argument("--adjust", choices=["simple", "twoway"], default="simple",
+                    help="how to remove the field effect before averaging")
     ap.add_argument("--min-env-lines", type=int, default=20)
     ap.add_argument("--min-line-obs", type=int, default=2)
     ap.add_argument("--outlier-z", type=float, default=5.0)
