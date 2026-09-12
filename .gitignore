@@ -1,5 +1,10 @@
+data/raw/C1_Phenotype_Data_V2.csv
+data/raw/C2_Phenotype_Data_V2.csv
+data/raw/environmental_features.csv
+data/raw/genotypes/
+data/processed/
 
-data/
+#sample data is committed
 
 outputs/
 
