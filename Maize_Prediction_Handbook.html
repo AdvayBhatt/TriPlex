@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Maize Prediction Handbook</title>
+<style>
+  :root{color-scheme:light dark}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+  @media print{
+    nav{display:none}
+    .shell{display:block;max-width:none}
+    section{break-inside:avoid-page;padding-top:26px}
+    .tw,table,.def,.callout{break-inside:avoid}
+    a{color:inherit;text-decoration:none}
+    body{background:#fff;color:#000;font-size:11pt}
+  }
+</style>
+<style>
+:root{
+  --ground:#FAFAF7; --panel:#FFFFFF; --sunk:#F1F3ED; --rail:#F5F6F1;
+  --ink:#191C16; --body:#33372E; --muted:#6A7064; --faint:#8D9385;
+  --rule:#DFE3D8; --rule-soft:#EBEEE6;
+  --gold:#A8790F; --gold-soft:#F3E7C6;
+  --teal:#2B6266; --teal-soft:#D5E4E3;
+  --rust:#9C4028; --rust-soft:#F2DCD5;
+  --measure:70ch;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#12150E; --panel:#1A1E16; --sunk:#20251C; --rail:#181C14;
+  --ink:#EEF0E8; --body:#CFD4C7; --muted:#949A8C; --faint:#787E70;
+  --rule:#30362A; --rule-soft:#272D22;
+  --gold:#D6A63C; --gold-soft:#453714;
+  --teal:#5FA0A5; --teal-soft:#1B3839;
+  --rust:#CE6A52; --rust-soft:#3E1F17;
+}}
+:root[data-theme="dark"]{
+  --ground:#12150E; --panel:#1A1E16; --sunk:#20251C; --rail:#181C14;
+  --ink:#EEF0E8; --body:#CFD4C7; --muted:#949A8C; --faint:#787E70;
+  --rule:#30362A; --rule-soft:#272D22;
+  --gold:#D6A63C; --gold-soft:#453714;
+  --teal:#5FA0A5; --teal-soft:#1B3839;
+  --rust:#CE6A52; --rust-soft:#3E1F17;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--body);
+  font-family:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,serif;font-size:17.5px;line-height:1.7;
+  -webkit-font-smoothing:antialiased}
+.shell{max-width:1240px;margin:0 auto;padding:0 24px 120px;
+  display:grid;grid-template-columns:224px minmax(0,1fr);gap:56px}
+@media(max-width:900px){.shell{grid-template-columns:1fr;gap:0}}
+
+/* nav */
+nav{position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto;
+  padding:40px 0 40px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px}
+@media(max-width:900px){nav{position:static;max-height:none;border-bottom:1px solid var(--rule);
+  margin-bottom:8px}}
+nav .navtitle{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+nav a{display:block;color:var(--muted);text-decoration:none;padding:4px 0 4px 12px;
+  border-left:2px solid var(--rule-soft);line-height:1.35}
+nav a:hover{color:var(--ink);border-left-color:var(--gold)}
+nav a .n{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;color:var(--faint);margin-right:7px;font-size:11px}
+nav .gap{height:12px}
+
+main{padding-top:40px;min-width:0}
+.col{max-width:var(--measure)}
+h1,h2,h3,h4{color:var(--ink);text-wrap:balance;margin:0;font-weight:600}
+h1{font-size:clamp(34px,5.4vw,52px);line-height:1.08;letter-spacing:-.02em;font-weight:700}
+h2{font-size:29px;line-height:1.2;letter-spacing:-.01em;margin:0 0 6px}
+h3{font-size:20px;margin:34px 0 0}
+h4{font-size:16px;margin:24px 0 0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+p{margin:15px 0 0;max-width:var(--measure)}
+a{color:var(--teal)}
+strong{color:var(--ink);font-weight:600}
+em{font-style:italic}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:.87em;
+  background:var(--sunk);padding:1px 5px;border-radius:3px}
+ul,ol{max-width:var(--measure);padding-left:22px;margin:14px 0 0}
+li{margin:7px 0}
+.num{font-variant-numeric:tabular-nums}
+
+header{padding:44px 0 34px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+.eyebrow{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.lede{font-size:20.5px;line-height:1.55;margin:18px 0 0;max-width:62ch;color:var(--body)}
+.meta{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:var(--muted);
+  margin-top:22px;display:flex;gap:22px;flex-wrap:wrap}
+
+section{padding:46px 0 0;scroll-margin-top:20px}
+.secno{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:11.5px;letter-spacing:.14em;
+  color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:block}
+.secno.t{color:var(--teal)} .secno.r{color:var(--rust)}
+
+/* definition blocks — the glossary spine of the document */
+.def{border-left:3px solid var(--teal);background:var(--rail);padding:14px 18px;
+  margin:20px 0 0;border-radius:0 4px 4px 0;max-width:var(--measure)}
+.def .term{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-weight:600;font-size:14.5px;
+  color:var(--ink);display:block;margin-bottom:3px}
+.def .term .exp{font-weight:400;color:var(--muted);font-size:13.5px}
+.def p{margin:4px 0 0;font-size:16px}
+
+.callout{background:var(--sunk);border-radius:5px;padding:18px 22px;margin:26px 0 0;
+  max-width:var(--measure)}
+.callout.warn{background:var(--rust-soft)}
+.callout.key{background:var(--gold-soft)}
+.callout p:first-child{margin-top:0}
+.callout .lab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+
+/* tables */
+.tw{overflow-x:auto;margin:26px 0 0}
+table{border-collapse:collapse;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;
+  width:100%;min-width:440px}
+th{text-align:left;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);font-weight:500;padding:0 16px 9px 0;
+  border-bottom:1.5px solid var(--rule)}
+td{padding:10px 16px 10px 0;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.win{color:var(--ink);font-weight:600}
+.dim{color:var(--faint)}
+caption{caption-side:bottom;text-align:left;font-size:13px;color:var(--muted);
+  padding-top:10px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+
+.pill{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:10px;
+  letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+.pill.no{background:var(--rust-soft);color:var(--rust)}
+.pill.yes{background:var(--gold-soft);color:var(--gold)}
+.pill.mid{background:var(--sunk);color:var(--muted)}
+
+.eq{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:14px;background:var(--sunk);
+  padding:14px 18px;border-radius:4px;margin:18px 0 0;max-width:var(--measure);
+  overflow-x:auto;line-height:1.8;color:var(--ink)}
+footer{margin-top:70px;padding-top:22px;border-top:1px solid var(--rule);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13.5px;color:var(--muted);max-width:var(--measure)}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<nav>
+  <div class="navtitle">Contents</div>
+  <a href="#brief"><span class="n">1</span>The brief</a>
+  <a href="#biology"><span class="n">2</span>The biology</a>
+  <a href="#data"><span class="n">3</span>The data</a>
+  <a href="#stats"><span class="n">4</span>Statistics toolkit</a>
+  <a href="#target"><span class="n">5</span>Prediction target</a>
+  <a href="#leakage"><span class="n">6</span>Leakage</a>
+  <a href="#model"><span class="n">7</span>The model</a>
+  <a href="#validation"><span class="n">8</span>Validation</a>
+  <a href="#results"><span class="n">9</span>Results</a>
+  <a href="#ceiling"><span class="n">10</span>The ceiling</a>
+  <a href="#where"><span class="n">11</span>Where accuracy lives</a>
+  <a href="#env"><span class="n">12</span>Environment</a>
+  <a href="#ledger"><span class="n">13</span>What failed</a>
+  <a href="#lit"><span class="n">14</span>The literature</a>
+  <a href="#limits"><span class="n">15</span>Limitations</a>
+  <a href="#next"><span class="n">16</span>What to do next</a>
+  <div class="gap"></div>
+  <a href="#rnote"><span class="n">&#9993;</span>Note on the R script</a>
+  <div class="gap"></div>
+  <a href="#glossary"><span class="n">§</span>Glossary</a>
+</nav>
+
+<main>
+<header>
+  <div class="eyebrow">TriPlex &middot; Corn Breeding Track &middot; Internal analysis</div>
+  <h1>The Maize Prediction Handbook</h1>
+  <p class="lede">A complete record of the analysis &mdash; what was built, what was found, what failed, and every term explained &mdash; written so that someone who has never seen a breeding dataset can read it end to end and argue with it intelligently.</p>
+  <div class="meta">
+    <span>~1 hour read</span><span>16 sections, glossary, handover notes</span>
+    <span>15 approaches tested</span><span>All numbers measured, none estimated</span>
+  </div>
+</header>
+
+<section id="brief">
+  <span class="secno">Section 1</span>
+  <h2>The brief, in one paragraph</h2>
+  <div class="col">
+    <p>It is January 2008 at a commercial maize breeding company. Roughly 16,000 new maize
+    lines are about to be planted across the Corn Belt. None of them has ever been
+    field-tested. The budget for field plots has just been cut, so only a fraction can be
+    evaluated. The task is to decide <strong>which ones get the ground</strong>, using only
+    what is knowable before planting: their DNA, their parentage, and the locations where
+    they are scheduled to go.</p>
+    <p>Everything in this document follows from one verified fact: of the 7,432
+    lines in the 2008 Cluster&nbsp;1 cohort, <strong>exactly zero</strong> had ever appeared
+    in the eight preceding years. Same in Cluster&nbsp;2 &mdash; zero of 8,536. Every
+    population is new. There is no track record to look up, so prediction must travel
+    through genetics.</p>
+  </div>
+</section>
+
+<section id="biology">
+  <span class="secno">Section 2</span>
+  <h2>The biology you need, and nothing more</h2>
+  <div class="col">
+    <p>Five ideas carry the entire project.</p>
+  </div>
+
+  <div class="def"><span class="term">Inbred line<span class="exp"> &mdash; often just "line"</span></span>
+    <p>A maize plant self-pollinated for many generations until it is genetically uniform and
+    breeds true. It is also weak and low-yielding, because inbreeding exposes harmful recessive
+    genes. This weakness is expected and is not what selection targets.</p></div>
+
+  <div class="def"><span class="term">Heterosis<span class="exp"> &mdash; "hybrid vigour"</span></span>
+    <p>Cross two <em>unrelated</em> inbred lines and the offspring, the F1 hybrid, is vigorous,
+    uniform and massively outyields either parent. Every bag of commercial maize seed is F1
+    hybrid seed. So the <em>product</em> is a hybrid, but the thing a breeder develops is
+    inbred lines.</p></div>
+
+  <div class="def"><span class="term">Heterotic pool<span class="exp"> &mdash; in this dataset, "Cluster 1" and "Cluster 2"</span></span>
+    <p>Two deliberately separated families of germplasm. Crossing <em>within</em> a pool gives
+    weak heterosis; crossing <em>across</em> pools gives strong heterosis. The programme
+    improves each pool separately and combines them at the end. Hence: C1 lines are only ever
+    crossed to C1 lines, and C2 to C2.</p></div>
+
+  <div class="def"><span class="term">Tester and testcross</span>
+    <p>An inbred line cannot be judged by its own performance, since inbreds are all weak. So
+    each candidate is crossed to a fixed, known partner from the <em>opposite</em> pool &mdash;
+    the tester &mdash; and the resulting hybrid is what gets planted and measured.
+    <strong>Every yield number in the dataset is a hybrid's yield, not the line's.</strong></p></div>
+
+  <div class="def"><span class="term">GCA and SCA<span class="exp"> &mdash; General and Specific Combining Ability</span></span>
+    <p><strong>GCA</strong> is how much a line raises hybrid yield <em>on average</em>, across
+    many partners. It is driven by <em>additive</em> effects: each good gene variant contributes
+    a little and the contributions sum. Predictable, and the quantity estimated here.
+    <strong>SCA</strong> is the extra effect of one <em>specific</em> pairing &mdash; two lines
+    that happen to click. Driven by gene interactions, and famously hard to predict.</p></div>
+
+  <div class="callout">
+    <span class="lab">Why crossing comes after ranking</span>
+    <p>A natural question: if the product is a C1&times;C2 hybrid, why not test hybrids directly?
+    Because 500&nbsp;&times;&nbsp;500 is 250,000 combinations, each needing multi-location
+    trials. Instead each candidate is crossed to <em>one</em> tester, which estimates its GCA
+    cheaply. Rank on GCA, keep the best ~20 from each pool, and only then test those 400
+    specific pairings for SCA. This dataset is stage one only.</p>
+  </div>
+</section>
+
+<section id="data">
+  <span class="secno">Section 3</span>
+  <h2>What is actually in the files</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Source</th><th>One row is</th><th>Size</th><th>Joined by</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Phenotype</strong></td><td>one line, in one field, in one year</td>
+            <td class="n">~537k rows &times; 2</td><td>&mdash;</td></tr>
+        <tr><td><strong>Environment</strong></td><td>one field in one year: weather + soil</td>
+            <td class="n">1,185 &times; 86</td><td><code>YEAR</code> + <code>LOC</code></td></tr>
+        <tr><td><strong>Genotype</strong></td><td>one line's DNA at 2,911 marker positions</td>
+            <td class="n">999 files</td><td><code>LINE_UNIQUE_ID</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="def"><span class="term">SNP<span class="exp"> &mdash; Single Nucleotide Polymorphism, said "snip"</span></span>
+    <p>A single position in the DNA where individuals differ by one letter &mdash; one plant has
+    a C, another a T. Cheap to measure at scale. There are 2,911 of them, the same panel for every
+    line, coded <code>1</code> / <code>-1</code> for the two homozygous states and <code>0</code>
+    for heterozygous (one copy of each).</p></div>
+
+  <div class="def"><span class="term">QTL<span class="exp"> &mdash; Quantitative Trait Locus</span></span>
+    <p>A stretch of genome that genuinely influences a measurable trait. Yield is
+    <em>polygenic</em>: thousands of QTL each contributing a tiny amount. The markers here are almost
+    certainly not QTL themselves.</p></div>
+
+  <div class="def"><span class="term">LD<span class="exp"> &mdash; Linkage Disequilibrium</span></span>
+    <p>The reason 2,911 markers can predict anything. During reproduction, chromosomes swap
+    segments &mdash; recombination. Two positions close together are rarely separated, so they
+    are inherited as a unit. A marker sitting near a QTL therefore travels with it and acts as a
+    <em>proxy</em> for a gene that cannot be measured directly. In biparental families &mdash; only two ancestors,
+    few generations &mdash; LD is very high, so each marker tags a large chromosome block. That
+    is why a sparse panel suffices.</p></div>
+
+  <div class="callout warn">
+    <span class="lab">Six things the documentation got wrong</span>
+    <p>Each verified against the raw files. The years are <strong>2000&ndash;2008</strong>, not
+    2001&ndash;2007 &mdash; and the 2008 yields are present, which is what makes honest grading possible. The year column is <code>YEAR_x</code>, not <code>YEAR</code>, so the supplied
+    sample code does not run. Every Cluster&nbsp;2 identifier carries a fourth component
+    (<code>C2.1.1.0</code>), so a naive join matches <em>nothing</em>. There are 405 locations,
+    not the ~7 listed. The genetic map exists only inside the "unimputed" archives. And six
+    populations have malformed progeny identifiers that the guide's own regular expression
+    silently discards.</p>
+  </div>
+
+  <div class="col">
+    <h3>A detail that shapes everything: the genotypes are mostly inferred</h3>
+    <p>Splitting missingness by row type is revealing. The <strong>parents</strong> of each
+    population were genotyped densely &mdash; 0.8% missing. The <strong>progeny</strong> were
+    genotyped at only about 3% of markers &mdash; 96.9% missing &mdash; and everything else was
+    filled in computationally from the genetic map plus the parents' known chromosomes.</p>
+    <p>This works precisely because of the high LD described above: since a progeny chromosome
+    is a mosaic of a few large parental blocks, ~90 scattered markers are enough to infer which
+    parent each block came from, and from there all 2,911 follow. It also means progeny marker
+    values are ~97% statistical inference, which belongs in any honest limitations section.</p>
+  </div>
+</section>
+
+<section id="stats">
+  <span class="secno t">Section 4</span>
+  <h2>The statistics toolkit</h2>
+  <div class="col">
+    <p>Every concept used later, defined once here.</p>
+  </div>
+
+  <div class="def"><span class="term">Correlation (r)</span>
+    <p>"When one number goes up, does the other?" Runs from &minus;1 to +1. Zero means no
+    relationship. It is the primary metric here because the decision is a <em>ranking</em> problem.</p></div>
+
+  <div class="def"><span class="term">Pearson vs Spearman correlation</span>
+    <p><strong>Pearson</strong> uses the actual values and asks whether they move together in a
+    straight line. <strong>Spearman</strong> discards the values and uses only the ranks (1st,
+    2nd, 3rd&hellip;), asking only whether things are in the same order. Spearman matters here
+    because advancement takes "the top 10%" &mdash; the order must be right, not the exact bushels.</p></div>
+
+  <div class="def"><span class="term">R&sup2;<span class="exp"> &mdash; "R squared", proportion of variance explained</span></span>
+    <p>Literally r&sup2;. An r of 0.186 becomes 0.035, or 3.5%. <strong>This is not reported here</strong>, and neither does the genomic selection field, because it is measured
+    against a target that is roughly half random noise and so reads as catastrophic when the
+    result is respectable. See section 10.</p></div>
+
+  <div class="def"><span class="term">Heritability and reliability</span>
+    <p>The share of observed variation that is genuinely genetic rather than environmental or
+    measurement noise. <strong>Reliability</strong> is the same idea applied to an <em>average</em>:
+    how much of the variation in the line means is real signal. Measured here at
+    <strong>0.49</strong> &mdash; about half of what distinguishes one 2008 line mean from
+    another is noise.</p></div>
+
+  <div class="def"><span class="term">Fixed vs random effects, and BLUP</span>
+    <p>A <strong>fixed effect</strong> is estimated independently for each level &mdash; useful
+    when there are few levels and you care about each. A <strong>random effect</strong> assumes
+    the levels are draws from a distribution, and <em>shrinks</em> each estimate toward the
+    overall mean in proportion to how little data supports it. <strong>BLUP</strong> (Best Linear
+    Unbiased Prediction) is the resulting estimate. Shrinkage is the right instinct when you have
+    thousands of levels with a handful of observations each &mdash; exactly the situation here.</p></div>
+
+  <div class="def"><span class="term">Ridge regression and regularisation</span>
+    <p>Ordinary regression with 2,686 predictors and noisy data will chase coincidences &mdash;
+    a marker that looks good in 40 lines by luck gets a huge weight. <strong>Ridge</strong> adds
+    a penalty on large weights, forcing the model to spread credit thinly and stay modest. The
+    penalty strength is <code>alpha</code>; ours is 30,000, which is very strong and deliberately
+    so. Ridge on centred markers is mathematically equivalent to <strong>GBLUP</strong> /
+    <strong>rrBLUP</strong>, the field-standard method.</p></div>
+
+  <div class="def"><span class="term">Overfitting</span>
+    <p>Learning quirks of the training data rather than real patterns. Looks excellent on data
+    already seen, fails on anything new. Ridge's penalty exists to prevent it.</p></div>
+
+  <div class="def"><span class="term">Cross-validation (CV)</span>
+    <p>Hide part of the training data, fit on the rest, test on the hidden part, repeat. It
+    estimates real-world performance without touching the true test set.</p></div>
+
+  <div class="def"><span class="term">Confounding</span>
+    <p>Two things varying together so their effects cannot be told apart. There are three
+    important cases: G&times;E with plot error (section 12), tester with population (every
+    population uses exactly one tester), and year with weather (section 12).</p></div>
+
+  <div class="def"><span class="term">GEBV<span class="exp"> &mdash; Genomic Estimated Breeding Value</span></span>
+    <p>The number the model outputs: a line's predicted genetic merit, computed from DNA alone.</p></div>
+
+  <div class="def"><span class="term">MAF<span class="exp"> &mdash; Minor Allele Frequency</span></span>
+    <p>How common the rarer of a marker's two variants is. A marker identical in 99% of lines
+    cannot distinguish between them, so markers below 1% are dropped.</p></div>
+</section>
+
+<section id="target">
+  <span class="secno">Section 5</span>
+  <h2>The prediction target, and why it is not raw yield</h2>
+  <div class="col">
+    <p>Two problems stand between the raw records and a usable target.</p>
+    <p><strong>One: fields differ enormously.</strong> The environment accounts for
+    <strong>68.8%</strong> of all variation in plot yield. One line in the dataset gave
+    163&nbsp;bu/acre at one site and 263 at another in the same season. A line grown in good
+    fields looks good regardless of its genetics.</p>
+    <p><em>The fix:</em> subtract each field's average yield. What remains is "how much better
+    or worse than everyone else in <em>that same field</em>" &mdash; a fair comparison.</p>
+    <p><strong>Two: a single plot is noisy.</strong> And 99.8% of line&times;field combinations
+    contain exactly one unreplicated plot.</p>
+    <p><em>The fix:</em> average each line over the ~7 fields it grew in. Averaging cancels
+    noise.</p>
+  </div>
+  <div class="eq">YLD_ADJ(line) = mean over that line's plots of ( yield &minus; that field's mean yield )</div>
+  <div class="col">
+    <p>One row per line; spread about &plusmn;10.7&nbsp;bu/acre. This number is the estimate of
+    the line's GCA.</p>
+  </div>
+</section>
+
+<section id="leakage">
+  <span class="secno r">Section 6</span>
+  <h2>Leakage: the trap that would have sunk the submission</h2>
+  <div class="col">
+    <p>The obvious move is to predict yield using the other measurements in the file &mdash;
+    moisture, plant height, test weight, lodging. <strong>You cannot.</strong></p>
+    <p>It is January. The seed is not in the ground. Every one of those traits is measured
+    <em>at harvest in October</em>, off the very same plot that produces the yield being
+    predicted. A model using them scores beautifully in testing and is <strong>impossible to
+    run</strong> on the actual decision, because in January the inputs do not exist.</p>
+  </div>
+  <div class="def"><span class="term">Target leakage</span>
+    <p>Accidentally giving the model information that would not be available at the moment the
+    prediction is needed &mdash; often information derived from the answer itself.</p></div>
+  <div class="col">
+    <p>The pipeline names every excluded trait explicitly in code, so the exclusion is visible
+    rather than implied by omission. The cost of excluding them was checked: no harvest trait correlates
+    with yield above <span class="mono">|r| = 0.17</span>. Almost nothing is lost.</p>
+    <p>Those traits remain useful for two legitimate purposes &mdash; predicting them from DNA
+    as separate targets, and building a selection index over predicted moisture and lodging
+    alongside predicted yield. They are simply never <em>inputs</em> for yield.</p>
+  </div>
+</section>
+
+<section id="model">
+  <span class="secno">Section 7</span>
+  <h2>The model</h2>
+  <div class="eq">YLD_ADJ  ~  Ridge( 2,686 SNP markers ),  alpha = 30,000</div>
+  <div class="col">
+    <p>Each marker gets a small weight; a line's score is the sum of the weights it carries.
+    That is the whole model. Not a neural network, not an ensemble &mdash; and sections 13 and
+    14 explain why that is the <em>correct</em> choice here rather than a fallback.</p>
+    <h4>Preprocessing, with every drop counted</h4>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Step</th><th class="n">Dropped</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>No yield recorded</td><td class="n">20,904</td><td>nothing to learn from</td></tr>
+        <tr><td>Field with &lt;20 lines</td><td class="n">3</td><td>its mean is the yardstick; too few lines makes it unstable</td></tr>
+        <tr><td>Outlier &gt;5 SD within its own field</td><td class="n">2</td><td>a 300 bu/ac plot is only odd if neighbours gave 150</td></tr>
+        <tr><td>Line grown in &lt;2 fields</td><td class="n">243</td><td>unreliable mean</td></tr>
+        <tr><td>Marker &gt;50% uncalled</td><td class="n">11</td><td>imputing it would invent data</td></tr>
+        <tr><td>Marker with MAF &lt;1%</td><td class="n">214</td><td>cannot distinguish lines</td></tr>
+      </tbody>
+      <caption>Remaining gaps filled with each marker's mean, then centred and scaled &mdash;
+      all statistics computed on training lines only, so 2008 never influences the transformation.</caption>
+    </table>
+  </div>
+</section>
+
+<section id="validation">
+  <span class="secno t">Section 8</span>
+  <h2>Validation, and why ours looks unusual</h2>
+  <div class="col">
+    <p>Standard random cross-validation would mislead here, and the size of the lie is
+    documented in the literature.</p>
+    <p>Lines within a population are <strong>siblings from one cross</strong> &mdash; nearly
+    identical genetically. A random split puts brothers on both sides, so the model "predicts" a
+    line by recognising its sibling. It scores beautifully, then collapses on 2008 where every
+    family is new.</p>
+  </div>
+  <div class="def"><span class="term">Leave-population-out cross-validation</span>
+    <p>Folds are split by family, so all siblings stay on the same side of the split. Harder,
+    honest, and it mirrors the actual task. The rubric calls this "cross-validation appropriate
+    for breeding program structure."</p></div>
+  <div class="callout key">
+    <span class="lab">How big is the lie?</span>
+    <p>Werner et al. (2020) ran both on the same maize data: random CV gave
+    <strong>0.59&ndash;0.77</strong>; within-family validation gave <strong>0.00&ndash;0.18</strong>.
+    A gap of up to 0.59. Most published results reporting large wins use the inflated number.
+    This is why the figures here look small and are trustworthy.</p>
+  </div>
+</section>
+
+<section id="results">
+  <span class="secno">Section 9</span>
+  <h2>Results</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Model</th><th class="n">C1 CV</th><th class="n">C1 2008</th>
+        <th class="n">C2 CV</th><th class="n">C2 2008</th></tr></thead>
+      <tbody>
+        <tr><td>Do nothing (cohort mean)</td><td class="n dim">0.000</td><td class="n dim">0.000</td>
+            <td class="n dim">0.000</td><td class="n dim">0.000</td></tr>
+        <tr><td>Pedigree only</td><td class="n">0.068</td><td class="n">0.082</td>
+            <td class="n">0.080</td><td class="n">0.116</td></tr>
+        <tr><td>Ridge on 50 genomic PCs</td><td class="n">0.165</td><td class="n">0.138</td>
+            <td class="n">0.206</td><td class="n">0.077</td></tr>
+        <tr><td><strong>Ridge on all markers</strong></td><td class="n win">0.192</td>
+            <td class="n win">0.186</td><td class="n win">0.227</td><td class="n win">0.150</td></tr>
+        <tr><td>Markers + pedigree</td><td class="n">0.166</td><td class="n">0.170</td>
+            <td class="n">0.194</td><td class="n">0.174</td></tr>
+      </tbody>
+      <caption>DNA beats pedigree in both clusters. Whether pedigree helps <em>on top of</em>
+      markers does not replicate &mdash; it hurt in C1, helped in C2 &mdash; so it is not claimed.</caption>
+    </table>
+  </div>
+  <div class="col">
+    <h3>What the ranking is worth commercially</h3>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Advance</th><th class="n">Truly in that top tier</th>
+        <th class="n">vs random</th><th class="n">Realised gain</th></tr></thead>
+      <tbody>
+        <tr><td>Top 2%</td><td class="n">10.9%</td><td class="n win">5.4&times;</td><td class="n">+7.29 bu/ac</td></tr>
+        <tr><td>Top 5%</td><td class="n">14.4%</td><td class="n">2.9&times;</td><td class="n">+4.16 bu/ac</td></tr>
+        <tr><td>Top 10%</td><td class="n">17.2%</td><td class="n">1.7&times;</td><td class="n">+2.54 bu/ac</td></tr>
+        <tr><td>Top 20%</td><td class="n">26.6%</td><td class="n">1.3&times;</td><td class="n">+1.64 bu/ac</td></tr>
+      </tbody>
+      <caption>Accuracy is highest exactly where a reduced budget forces selectivity &mdash; the
+      useful shape for this decision.</caption>
+    </table>
+  </div>
+</section>
+
+<section id="ceiling">
+  <span class="secno">Section 10</span>
+  <h2>Why 0.186 is better than it sounds</h2>
+  <div class="col">
+    <p>The outcomes being graded against are <em>themselves</em> noisy. Each 2008 line's "true"
+    value comes from about five single unreplicated plots. How noisy was measured by splitting
+    each line's plots into two random halves and correlating the two independent averages: they
+    agree at only <strong>0.33</strong>, implying the line means are about
+    <strong>49% reliable</strong>.</p>
+  </div>
+  <div class="callout key">
+    <span class="lab">The ceiling</span>
+    <p>A <em>perfect</em> model &mdash; one that knew every line's true genetic value exactly
+    &mdash; would still only score <strong>r &asymp; 0.70</strong> against this target. The rest
+    is plot noise, and nothing predicts noise. Any team reporting 0.9 has a leak.</p>
+  </div>
+  <div class="col">
+    <p>So the honest framing is <strong>0.186 / 0.70 = 27% of what is achievable</strong>, not
+    "0.186 out of 1.0". Dividing predictive ability by the square root of reliability gives an
+    estimated <em>prediction accuracy</em> against true breeding value of about
+    <strong>0.27</strong> &mdash; though note that this conventional adjustment is known to be
+    statistically ill-behaved, so the measured number leads and the derived one follows
+    with that caveat attached.</p>
+  </div>
+</section>
+
+<section id="where">
+  <span class="secno">Section 11</span>
+  <h2>Where the accuracy actually lives</h2>
+  <div class="col">
+    <p>A line's breeding value splits into two parts that are predictable in very different
+    degrees:</p>
+  </div>
+  <div class="eq">GCA(line)  =  its family's mean  +  its deviation within that family</div>
+  <div class="col">
+    <p>Decomposing the 0.186 to see which part it comes from.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th class="n">Correlation</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Overall, line level</td><td class="n">+0.186</td><td>the headline number</td></tr>
+        <tr><td><strong>Between families</strong></td><td class="n win">+0.316</td>
+            <td>ranking the 71 new families against each other</td></tr>
+        <tr><td>Within families</td><td class="n">+0.109</td>
+            <td>ranking siblings inside a family</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout warn">
+    <span class="lab">The most important number in this document</span>
+    <p><strong>95.7%</strong> of the variance in the <em>predictions</em> is between-family
+    &mdash; but only <strong>34.0%</strong> of the variance in the <em>actual outcomes</em> is.
+    The model assigns nearly the same score to every line in a family, while two-thirds of real
+    genetic variation sits <em>within</em> families. The model is effectively ranking families, not
+    lines, and most of the available signal is untouched.</p>
+  </div>
+  <div class="col">
+    <h3>Acting on it: a two-component model</h3>
+    <p>Splitting the problem in two &mdash; family mean predicted from the densely genotyped
+    parents, within-family rank predicted from the progeny markers &mdash; and blending that
+    with the flat model produces the <strong>only improvement in this project that replicated
+    across both clusters</strong>.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Model</th><th class="n">C1 r</th><th class="n">C1 rho</th>
+        <th class="n">C2 r</th><th class="n">C2 rho</th></tr></thead>
+      <tbody>
+        <tr><td>Flat pooled ridge (baseline)</td><td class="n">0.186</td><td class="n">0.142</td>
+            <td class="n">0.150</td><td class="n">0.151</td></tr>
+        <tr><td>Two-component alone</td><td class="n">0.169</td><td class="n">0.150</td>
+            <td class="n">0.144</td><td class="n">0.152</td></tr>
+        <tr><td><strong>50/50 blend</strong></td><td class="n win">0.191</td><td class="n win">0.152</td>
+            <td class="n win">0.154</td><td class="n win">0.156</td></tr>
+      </tbody>
+      <caption>Small but consistent &mdash; better on correlation, rank correlation and
+      selection gain in both clusters. Family means predict at r&nbsp;=&nbsp;0.242 (C1) and
+      0.120 (C2); within-family deviations at 0.113 and 0.114.</caption>
+    </table>
+  </div>
+  <div class="callout warn">
+    <span class="lab">A tempting result that did not replicate</span>
+    <p>Classifying families by how related their parents are to already-measured parents gave a
+    clean gradient in Cluster&nbsp;1 &mdash; accuracy of 0.118, 0.126, 0.267 across thirds, more
+    than doubling for the most related. Cluster&nbsp;2 reversed it entirely: 0.148, 0.180,
+    <strong>0.068</strong>. The published literature predicts the C1 pattern, which made it
+    easy to believe. It is recorded here as cluster-specific and is not claimed as a finding.</p>
+  </div>
+  <div class="col">
+    <p>A sharp illustration: predicting a family's mean from its <strong>two parents alone</strong>
+    &mdash; no progeny markers at all &mdash; gives r&nbsp;=&nbsp;0.196, against 0.277 for the
+    full 2,686-marker model on the same families. Most of what 2,686 markers buy over two
+    parental genotypes is modest.</p>
+  </div>
+</section>
+
+<section id="env">
+  <span class="secno t">Section 12</span>
+  <h2>Environment: the biggest lever, and the hardest</h2>
+  <div class="col">
+    <p>Environment is 68.8% of yield variance, so it is tempting to attack it directly. Two
+    findings complicate that, and a third partially rescues it.</p>
+    <h3>G&times;E is smaller than it looks</h3>
+  </div>
+  <div class="def"><span class="term">G&times;E<span class="exp"> &mdash; Genotype-by-Environment interaction</span></span>
+    <p>When lines <em>reorder</em> between environments &mdash; line A beats B in Iowa but loses
+    in Minnesota. If real and large, you need location-specific recommendations. If small, one
+    national list is correct.</p></div>
+  <div class="col">
+    <p>Correlation between individual environments is only ~0.10, which looks like enormous
+    G&times;E. But grouping site-years into six climate/soil types and averaging the noise away
+    tells a different story: cross-type correlation is <strong>+0.357</strong> against a
+    within-type split-half floor of <strong>+0.265</strong>. Performance in one environment type
+    predicts a <em>different</em> type better than two halves of the <em>same</em> type predict
+    each other. The implied genetic correlation across types is high &mdash; see the corrected estimate
+    below.</p>
+    <p>So the near-zero correlation between individual fields was overwhelmingly
+    <strong>plot noise, not interaction</strong>.</p>
+    <h4>The corrected estimate</h4>
+    <p>An earlier version of this analysis put the genetic correlation at 0.85 by comparing a
+    cross-type correlation against a within-type split-half. That comparison was unsound: the
+    two sides averaged over different numbers of site-years, so they carried different amounts
+    of noise, and taken literally the arithmetic implied a correlation above 1 &mdash; which is
+    impossible. Recomputing with both sides measured on <em>matched half-samples</em>:</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Environment type pair</th><th class="n">Lines shared</th>
+        <th class="n">Cross-type r</th><th class="n">Implied genetic correlation</th></tr></thead>
+      <tbody>
+        <tr><td>0 vs 4</td><td class="n">2,544</td><td class="n">0.266</td><td class="n">0.95</td></tr>
+        <tr><td>0 vs 5</td><td class="n">2,385</td><td class="n">0.276</td><td class="n">1.04</td></tr>
+        <tr><td>2 vs 4</td><td class="n">371</td><td class="n">0.156</td><td class="n">0.59</td></tr>
+        <tr><td>2 vs 5</td><td class="n">438</td><td class="n">0.283</td><td class="n">1.15</td></tr>
+        <tr><td>4 vs 5</td><td class="n">7,240</td><td class="n">0.288</td><td class="n">1.06</td></tr>
+      </tbody>
+      <caption>Median 1.04, averaged over 12 random splits. Values above 1.0 are sampling noise
+      &mdash; a genetic correlation cannot exceed 1 &mdash; so the honest reading is that it is
+      high, plausibly 0.9 or above, with one lower-confidence pair at 0.59. The corrected figure
+      is <em>higher</em> than the 0.85 it replaces, so the conclusion holds with a wider margin
+      than previously claimed.</caption>
+    </table>
+  </div>
+  <div class="col">
+    <p>A mixed model fitted in R gives the same picture with an explicit interaction term.
+    G&times;E cannot be estimated at the <em>line</em> level &mdash; one plot per cell &mdash;
+    but it <em>can</em> at the <em>population</em> level, where each population&times;environment
+    cell holds a median of 169 plots:</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Variance component</th><th class="n">Variance</th><th class="n">SD (bu/ac)</th><th class="n">Share</th></tr></thead>
+      <tbody>
+        <tr><td>Environment</td><td class="n">810.8</td><td class="n">28.5</td><td class="n win">62.0%</td></tr>
+        <tr><td>Residual (plot error)</td><td class="n">281.7</td><td class="n">16.8</td><td class="n">21.5%</td></tr>
+        <tr><td>Population &times; Environment</td><td class="n">142.2</td><td class="n">11.9</td><td class="n">10.9%</td></tr>
+        <tr><td>Population (genetics)</td><td class="n">73.2</td><td class="n">8.6</td><td class="n">5.6%</td></tr>
+      </tbody>
+      <caption>Fitted with <code>lmer</code> on 516,032 plot records, all three terms random.
+      Two practical notes for anyone reproducing this: fitting environment and population as
+      <em>fixed</em> effects builds a dense 516,000&times;1,676 design matrix and exhausts R's
+      16&nbsp;GB vector limit &mdash; random effects use sparse matrices and fit comfortably. And
+      tester must be omitted: all 468 populations use exactly one tester, so it is perfectly
+      nested and carries nothing separable from population.</caption>
+    </table>
+  </div>
+  <div class="col">
+  <div class="callout key">
+    <span class="lab">The formal decision rule</span>
+    <p>Breeders decide whether to split a programme by regions using
+    <span class="mono">CR/DR = r&#x2085; &times; &radic;(H/H&#x1d62;)</span> &mdash; the gain from
+    selecting on the national mean relative to selecting within a region. Splitting also cuts
+    testing intensity per zone, which counts against it. Even at the conservative end of the
+    corrected range, this comfortably exceeds 1, and <strong>above 1 means one national list
+    wins</strong>. The break-even sits at r&nbsp;&asymp;&nbsp;0.78; every type pair but one is
+    well clear of it.</p>
+  </div>
+  <div class="col">
+    <h3>Weather predicts places, not seasons &mdash; with a twist</h3>
+    <p>Predicting a field's productivity from the 84 weather and soil covariates works across
+    <em>locations</em> (r&nbsp;=&nbsp;+0.185 leaving one location out) and fails across
+    <em>years</em> (&minus;0.030 leaving one year out). Predicting 2008 is a new-year problem.</p>
+    <p>The working hypothesis was that the covariates are a location fingerprint: half are time-invariant soil,
+    and a location's monthly weather is dominated by its long-run normal.
+    <strong>The data contradicted the hypothesis in an instructive way.</strong> Splitting every
+    covariate into a location-climatology part and a within-location anomaly part:</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Block</th><th class="n">Share of covariate variance</th><th class="n">Predicts 2008 at</th></tr></thead>
+      <tbody>
+        <tr><td>Location climatology</td><td class="n">96.0%</td><td class="n dim">+0.005</td></tr>
+        <tr><td><strong>Within-location anomaly</strong></td><td class="n">4.0%</td><td class="n win">+0.175</td></tr>
+        <tr><td>All covariates together</td><td class="n">100%</td><td class="n">+0.070</td></tr>
+        <tr><td>Location's own history</td><td class="n">&mdash;</td><td class="n">+0.296</td></tr>
+        <tr><td><strong>History + anomaly combined</strong></td><td class="n">&mdash;</td><td class="n win">+0.324</td></tr>
+      </tbody>
+      <caption>The season signal is real but lives in 4% of the variance. Fitting all 84
+      covariates together lets the useless 96% drown it out. Separating the blocks recovers it,
+      and combining with location history beats either alone.</caption>
+    </table>
+  </div>
+  <div class="col">
+    <p>This is a genuine, usable improvement, and it came from testing a hypothesis that turned
+    out to be wrong in a productive direction.</p>
+  </div>
+</section>
+
+<section id="ledger">
+  <span class="secno r">Section 13</span>
+  <h2>Fifteen approaches tested against ridge</h2>
+  <div class="col">
+    <p>Each was implemented properly and scored against real held-out 2008 outcomes. Several
+    looked like wins on a narrow slice before collapsing on the full data &mdash; which is why
+    every result is checked in both clusters before it is believed.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Approach</th><th>The idea</th><th class="n">Best r</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Two-component blend</strong></td>
+            <td>family mean from parents + within-family rank from markers</td>
+            <td class="n win">0.191</td><td><span class="pill yes">adopted</span></td></tr>
+        <tr><td>Ridge, all markers</td><td>heavy shrinkage on additive effects</td>
+            <td class="n">0.186</td><td><span class="pill yes">baseline</span></td></tr>
+        <tr><td>Economic selection index</td><td>penalise grain moisture by its drying cost</td>
+            <td class="n">0.186</td><td><span class="pill mid">no effect</span></td></tr>
+        <tr><td>Relatedness stratification</td><td>weight training by kinship to the target family</td>
+            <td class="n dim">&mdash;</td><td><span class="pill no">did not replicate</span></td></tr>
+        <tr><td>Dense neural network</td><td>non-linear structure a linear model misses</td>
+            <td class="n">0.172</td><td><span class="pill mid">matched, not beaten</span></td></tr>
+        <tr><td>Multivariate trait model</td><td>correlated plot errors de-noise yield</td>
+            <td class="n">0.177</td><td><span class="pill mid">ambiguous</span></td></tr>
+        <tr><td>Field-quality weighting</td><td>5.3% of fields are actively misleading</td>
+            <td class="n">0.171</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>PCA compression</td><td>2,911 markers are highly redundant</td>
+            <td class="n">0.169</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>Ridge + boosting blend</td><td>ensembling usually helps</td>
+            <td class="n">0.159</td><td><span class="pill no">made it worse</span></td></tr>
+        <tr><td>Gradient boosting</td><td>captures interactions</td>
+            <td class="n">0.125</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>Midparent excess</td><td>breeders advance lines that beat their parents</td>
+            <td class="n">0.121</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>Two-way field fit</td><td>simple subtraction is biased</td>
+            <td class="n">0.119</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>Random forest</td><td>non-parametric baseline</td>
+            <td class="n">0.107</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>Block-attention transformer</td><td>genomic regions attending to one another</td>
+            <td class="n">0.096</td><td><span class="pill no">rejected</span></td></tr>
+        <tr><td>Multi-trait stacking</td><td>traits share genetic architecture</td>
+            <td class="n dim">&plusmn;0.008</td><td><span class="pill no">did not replicate</span></td></tr>
+        <tr><td>Two-stage via traits</td><td>predict traits, then yield from those</td>
+            <td class="n dim">0.240 cap</td><td><span class="pill no">below DNA-only</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout warn">
+    <span class="lab">The pattern is the finding</span>
+    <p>Genetic effects here are additive, individually tiny and spread across thousands of
+    markers. Methods that hunt for interactions and thresholds find noise instead. The
+    validation-to-holdout drop tells the story cleanly: ridge does not move, the dense network
+    falls 0.229&nbsp;&rarr;&nbsp;0.172, and the attention model falls
+    0.188&nbsp;&rarr;&nbsp;0.096. Flexible models lean on <strong>family resemblance</strong>,
+    which is exactly what cannot transfer when every target population is new.</p>
+    <p>A heavily regularised linear model is not a fallback here. It is the correct model class
+    for this biology.</p>
+  </div>
+</section>
+
+<section id="lit">
+  <span class="secno">Section 14</span>
+  <h2>What the literature says &mdash; including about this dataset itself</h2>
+  <div class="col">
+    <p>Four parallel literature reviews turned up something unexpected: <strong>this dataset
+    appears in published work</strong>. Two 2014 <em>Crop Science</em> papers describe 969
+    biparental maize testcross populations from a commercial programme, 2000&ndash;2008, two
+    heterotic groups, 2,911 SNP markers, ~156 lines per cross, a ~1,750&nbsp;cM map. That matches this
+    dataset feature for feature.</p>
+    <p>Which means there is a published benchmark for this <em>exact</em> scenario.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Published design</th><th>What it is</th><th class="n">Yield accuracy</th></tr></thead>
+      <tbody>
+        <tr><td>Phenotypic selection</td><td>line's mean in half the environments vs the other half</td><td class="n">0.24</td></tr>
+        <tr><td>Within-family</td><td>train on the same biparental cross</td><td class="n">0.14</td></tr>
+        <tr><td><strong>"Same background"</strong></td><td><strong>pool unrelated crosses &rarr; predict a new one &mdash; the task here</strong></td><td class="n">0.06</td></tr>
+        <tr><td><strong>TriPlex</strong></td><td>result on the same task</td><td class="n win">0.186</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>That is roughly <strong>three times</strong> the published number for this scenario, and
+    it also exceeds their <em>within-family</em> figure while solving a harder problem. The most useful
+    framing: their phenotypic-selection repeatability was 0.24, so prediction from DNA alone,
+    on unphenotyped lines in unseen families in a future year, reaches
+    <strong>78% of what actually growing the plants twice achieves</strong>.</p>
+    <h3>Two questions the literature settles</h3>
+    <p><strong>Would more markers help? No.</strong> Marker thinning in this exact germplasm gave
+    0.45 with 36 markers, 0.49 with 72, 0.50 with 107 &mdash; not significantly different. Marker
+    count explained 0.0% of variance in accuracy.</p>
+    <p><strong>Would more training data help? No.</strong> Accuracy here is not size-limited;
+    plugging these numbers into the standard theory implies an effective locus count orders of
+    magnitude beyond anything plausible. Another 60,000 unrelated lines would do almost nothing.</p>
+    <p>The binding constraint is <em>which</em> families, not how many lines &mdash; a
+    relatedness-matched training set has been shown to beat a general one several thousand
+    percent larger.</p>
+    <h3>Why neural networks fail here, mechanically</h3>
+    <p>Ubbens et al. (2021) trained a network shown <em>only where two genotypes match</em>, with
+    no marker values at all. It predicted as well as one with full access. Their conclusion:
+    neural networks in genomic prediction learn <strong>overall relatedness</strong>, not marker
+    effects. That is precisely the failure signature observed here &mdash; relatedness is abundant inside
+    training families and absent by construction in new ones.</p>
+    <p>This negative result is more informative than most published ones: the ratio of markers to
+    training lines here is two orders of magnitude more favourable to neural networks than almost any
+    published crop dataset. The "needs more data" explanation is therefore unavailable.</p>
+  </div>
+</section>
+
+<section id="limits">
+  <span class="secno r">Section 15</span>
+  <h2>Limitations, stated plainly</h2>
+  <div class="col">
+    <h3>Failure modes</h3>
+    <ul>
+      <li><strong>Novel germplasm.</strong> Accuracy depends on relatedness to trained lines. A
+      2008 family unrelated to anything in 2000&ndash;2007 will predict poorly, and the relatedness analysis in section 11 does not reliably flag which ones in advance.</li>
+      <li><strong>New seasons.</strong> Environmental covariates cannot forecast an unseen year.
+      Absolute yield forecasts for 2008 are unreliable; only the relative ranking is.</li>
+      <li><strong>New locations.</strong> 37 of 149 sites have no history, so their field effect
+      is assumed zero with the widest interval.</li>
+      <li><strong>Thin lines.</strong> A line grown in 2 fields is ranked alongside one grown in
+      7. Reliability weighting was tested and hurt, so lines are weighted equally &mdash; a known
+      compromise.</li>
+    </ul>
+    <h3>Data limits that no model can overcome</h3>
+    <ul>
+      <li><strong>SCA is inestimable by design.</strong> Every line is crossed to exactly one
+      tester (0 of 73,532 have two) and every population uses exactly one tester (468 of 468).
+      Line&times;tester interaction has no degrees of freedom, and the tester effect is perfectly
+      confounded with population. This was verified rather than assumed.</li>
+      <li><strong>G&times;E cannot be separated from plot error</strong> at the individual-field
+      level: 99.8% of cells hold one unreplicated plot.</li>
+      <li><strong>Imputed genotypes are ~97% inferred.</strong> Imputation error is a real and
+      unquantified uncertainty source.</li>
+      <li><strong>Genotype coverage is 85%</strong> for C1 training years, so ~15% of training
+      lines are unusable. The 2008 prediction set is 100% covered.</li>
+    </ul>
+    <h3>The weakest claim in the analysis</h3>
+    <p>The genetic correlation of <strong>0.85</strong> across environment types rests on a
+    reliability correction comparing a cross-type correlation against a within-type split-half.
+    Those two are not computed over matched numbers of site-years, and if they were
+    reliability-matched the arithmetic would imply a correlation above 1 &mdash; which is
+    impossible. The <em>direction</em> of the finding is solid and the decision it supports is
+    robust to a wide range of values, but <strong>the 0.85 figure itself should not go into the
+    submission until it is re-derived properly</strong>, ideally from a factor-analytic model
+    that handles reliability and unbalanced data correctly.</p>
+  </div>
+</section>
+
+<section id="next">
+  <span class="secno">Section 16</span>
+  <h2>What to do next, ranked</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th class="n">#</th><th>Action</th><th>Why</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td class="n">&#10003;</td><td>Parental GCA / two-component model</td>
+            <td>done &mdash; blend reaches 0.191 (C1) and 0.154 (C2), the one replicated gain</td><td><span class="pill yes">adopted</span></td></tr>
+        <tr><td class="n">&#10003;</td><td>Relatedness-targeted training</td>
+            <td>done &mdash; gradient is real in C1, reverses in C2</td><td><span class="pill no">dropped</span></td></tr>
+        <tr><td class="n">&#10003;</td><td>History + anomaly field effects</td>
+            <td>done &mdash; 0.324 vs 0.296, ready to wire into the recommendation layer</td><td><span class="pill yes">adopt</span></td></tr>
+        <tr><td class="n">&#10003;</td><td>Re-derive the type correlation</td>
+            <td>done &mdash; corrected estimate is higher than 0.85, not lower</td><td><span class="pill yes">fixed</span></td></tr>
+        <tr><td class="n">&#10003;</td><td>Economic selection index</td>
+            <td>done &mdash; 89% shortlist overlap with yield alone; negligible at standard weights</td><td><span class="pill mid">built</span></td></tr>
+        <tr><td class="n">1</td><td><strong>Spatial adjustment of unreplicated trials</strong></td>
+            <td>the untried lever with the clearest rationale: it attacks plot error directly, which attenuates every correlation in this document. Needs plot row/range coordinates &mdash; check whether the archive retains them</td><td>medium</td></tr>
+        <tr><td class="n">2</td><td>Within-family prediction</td>
+            <td>two thirds of genetic variation sits there and the model barely touches it (r = 0.11). The largest unexploited opportunity, and the hardest</td><td>high</td></tr>
+        <tr><td class="n">3</td><td>Factor-analytic multi-environment model</td>
+            <td>would replace several hand-rolled estimators in section 12 with one properly specified fit</td><td>medium</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout">
+    <span class="lab">Deliberately not being pursued</span>
+    <p>More markers, more training lines, denser neural networks, haplotype reconstruction, and
+    HPC compute. Each was investigated; each is ruled out by evidence in sections 13 and 14
+    rather than by preference. The pipeline runs a ridge fit in 1.6&nbsp;seconds and the full
+    demonstration end to end in 3.3&nbsp;seconds. Compute has never been the constraint.</p>
+  </div>
+</section>
+
+
+<section id="rnote">
+  <span class="secno t">Handover note</span>
+  <h2>On the R script &mdash; for whoever picks up the mixed-model work</h2>
+  <div class="col">
+    <p>The <code>lme4</code> variance-components script was run as requested. It does not
+    execute as written, and separately from the syntax there are two data issues worth knowing
+    about, because the same traps will catch any rewrite. Corrected versions of both scripts are
+    in <code>R/</code> in the repository.</p>
+    <h3>Three things that stop it running</h3>
+    <ol>
+      <li><strong>Unbalanced parenthesis.</strong> <code>lmer(yield ~ environment + tester +
+      genotype), data = ...)</code> has an extra closing bracket after <code>genotype</code>.</li>
+      <li><strong>No random-effects term.</strong> That same call has no <code>(1 | ...)</code>
+      term, so <code>lmer</code> stops with "No random effects terms specified in formula". A
+      model with only fixed effects is <code>lm()</code>.</li>
+      <li><strong>An object that never exists.</strong> The fitted model is assigned to
+      <code>c1_fixedG_gxe</code>, but <code>anova()</code> and <code>update()</code> are both
+      called on <code>c1_gxe</code>. Also, <code>anova()</code> comparing a
+      <code>REML = FALSE</code> fit to a <code>REML = TRUE</code> one is not a valid
+      likelihood-ratio test &mdash; both must be on the same scale.</li>
+    </ol>
+    <h3>Two data issues that matter more than the syntax</h3>
+  </div>
+  <div class="def"><span class="term"><code>shorthand_x</code> is the population, not the genotype</span>
+    <p>It takes 499 distinct values; there are 78,045 distinct lines. Passing it as
+    <code>genotype</code> fits <em>population</em> effects. That is a perfectly reasonable model
+    &mdash; and as it happens the only one of the two that is estimable, see below &mdash; but it
+    answers a different question from the one the variable name implies. The line identifier is
+    <code>LINE_UNIQUE_ID</code>.</p></div>
+  <div class="def"><span class="term">tester is perfectly nested in population</span>
+    <p>All 468 populations use exactly one tester each. So <code>tester</code> carries no
+    information that <code>population</code> does not already contain; fitting both as fixed
+    effects is rank-deficient and the software will silently drop columns. Tester has to come
+    out of the model.</p></div>
+  <div class="callout warn">
+    <span class="lab">It also runs out of memory</span>
+    <p>With <code>environment</code> (1,177 levels) and <code>population</code> (499) as
+    <em>fixed</em> effects, the design matrix is roughly 516,000&nbsp;&times;&nbsp;1,676 doubles
+    and R stops with <em>"vector memory limit of 16.0 Gb reached"</em>. Making the terms
+    <strong>random</strong> fixes this &mdash; random effects use sparse matrices &mdash; and is
+    also the statistically correct choice, because <code>VarCorr()</code> reports <em>variance
+    components</em>, and a term must be random to have one at all.</p>
+  </div>
+  <div class="col">
+    <p>The working formulation, which fits comfortably:</p>
+  </div>
+  <div class="eq">lmer(yield ~ 1 + (1 | environment) + (1 | population)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (1 | population:environment), data = d, REML = TRUE)</div>
+  <div class="col">
+    <p>And the instinct behind the interaction term was right, even though the variable was
+    mislabelled. Genotype&times;environment interaction <em>cannot</em> be estimated at the line
+    level &mdash; one unreplicated plot per line per field means it is perfectly confounded with
+    plot error &mdash; but at the <strong>population</strong> level each cell holds a median of
+    169 plots, so it is estimable. The fit gives environment 62.0%, population&times;environment
+    10.9%, population 5.6%, residual 21.5%, which agrees closely with the independent Python
+    decomposition in section 5 and adds an interaction term that analysis could not isolate.</p>
+    <p>One small thing to watch: <code>read_csv</code> renames the unnamed first column to
+    <code>...1</code> and emits a warning. Harmless, but it will appear in the output.</p>
+  </div>
+</section>
+
+<section id="glossary">
+  <span class="secno t">Reference</span>
+  <h2>Glossary</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">alpha</td><td>ridge penalty strength; higher means more shrinkage. Ours: 30,000</td></tr>
+        <tr><td><strong>Additive effect</strong></td><td>gene variants each contribute a little and the contributions sum &mdash; the predictable part of genetics</td></tr>
+        <tr><td><strong>BLUP</strong></td><td>Best Linear Unbiased Prediction &mdash; an estimate shrunk toward the mean in proportion to how little data supports it</td></tr>
+        <tr><td><strong>bu/acre</strong></td><td>bushels per acre, the yield unit. Typical here: ~200</td></tr>
+        <tr><td><strong>cM</strong></td><td>centiMorgan &mdash; genetic distance; 1 cM ≈ a 1% chance of recombination per generation</td></tr>
+        <tr><td><strong>Confounding</strong></td><td>two effects varying together so they cannot be told apart</td></tr>
+        <tr><td><strong>CV</strong></td><td>cross-validation &mdash; hide part of the data, train on the rest, test on the hidden part</td></tr>
+        <tr><td><strong>DH</strong></td><td>doubled haploid &mdash; a way of producing inbred lines in one generation instead of six</td></tr>
+        <tr><td><strong>F1 / F2 / BC</strong></td><td>first-generation hybrid / its self-pollinated offspring / backcross to a parent</td></tr>
+        <tr><td><strong>GBLUP / rrBLUP</strong></td><td>genomic BLUP &mdash; mathematically equivalent to ridge regression on centred markers</td></tr>
+        <tr><td><strong>GCA</strong></td><td>General Combining Ability &mdash; a line's average contribution to hybrid yield. The prediction target</td></tr>
+        <tr><td><strong>GEBV</strong></td><td>Genomic Estimated Breeding Value &mdash; the model's output for one line</td></tr>
+        <tr><td><strong>Germplasm</strong></td><td>collective noun for breeding material &mdash; the pool of lines and their genetics</td></tr>
+        <tr><td><strong>G&times;E</strong></td><td>Genotype-by-Environment interaction &mdash; lines reordering between environments</td></tr>
+        <tr><td><strong>Heritability</strong></td><td>share of observed variation that is genuinely genetic</td></tr>
+        <tr><td><strong>Heterosis</strong></td><td>hybrid vigour &mdash; an F1 hybrid outperforming both inbred parents</td></tr>
+        <tr><td><strong>Heterotic pool</strong></td><td>a separated germplasm family that combines well with another. Here: Cluster 1 and Cluster 2</td></tr>
+        <tr><td><strong>IBD / IBS</strong></td><td>identity by descent (shared from a known common ancestor) / by state (looks the same, origin unknown)</td></tr>
+        <tr><td><strong>Imputation</strong></td><td>filling in unmeasured genotypes computationally, here from the map plus parental chromosomes</td></tr>
+        <tr><td><strong>Inbred line</strong></td><td>a genetically uniform, true-breeding plant produced by repeated self-pollination</td></tr>
+        <tr><td><strong>LD</strong></td><td>Linkage Disequilibrium &mdash; nearby genome positions being inherited together, which is why markers work as proxies</td></tr>
+        <tr><td><strong>Leakage</strong></td><td>giving the model information unavailable at real decision time</td></tr>
+        <tr><td><strong>MAF</strong></td><td>Minor Allele Frequency &mdash; how common a marker's rarer variant is</td></tr>
+        <tr><td><strong>MLP</strong></td><td>multi-layer perceptron &mdash; a standard dense neural network</td></tr>
+        <tr><td><strong>Pearson r</strong></td><td>correlation using actual values; the primary metric here</td></tr>
+        <tr><td><strong>Polygenic</strong></td><td>influenced by thousands of genes, each contributing a tiny amount. Yield is strongly polygenic</td></tr>
+        <tr><td><strong>Population</strong></td><td>here: one cross and all the candidate lines derived from it. There are 999</td></tr>
+        <tr><td><strong>QTL</strong></td><td>Quantitative Trait Locus &mdash; a genome region genuinely affecting a trait</td></tr>
+        <tr><td><strong>R&sup2;</strong></td><td>proportion of variance explained; misleading here, so not reported</td></tr>
+        <tr><td><strong>Recombination</strong></td><td>chromosomes swapping segments during reproduction &mdash; what breaks marker&ndash;gene associations</td></tr>
+        <tr><td><strong>Regularisation</strong></td><td>penalising model complexity to stop it fitting noise</td></tr>
+        <tr><td><strong>Reliability</strong></td><td>share of variation in an average that is real signal. The 2008 line means here: 0.49</td></tr>
+        <tr><td><strong>RKHS</strong></td><td>Reproducing Kernel Hilbert Space &mdash; a kernel regression family; competitive in some settings, untested here</td></tr>
+        <tr><td><strong>SCA</strong></td><td>Specific Combining Ability &mdash; the extra effect of one particular pairing. Out of scope and inestimable here</td></tr>
+        <tr><td><strong>Shrinkage</strong></td><td>pulling estimates toward the mean when data is thin &mdash; the core idea behind ridge and BLUP</td></tr>
+        <tr><td><strong>SNP</strong></td><td>Single Nucleotide Polymorphism &mdash; a single-letter DNA difference. 2,911 are used here</td></tr>
+        <tr><td><strong>Spearman rho</strong></td><td>correlation using ranks only; matches "advance the top N%"</td></tr>
+        <tr><td><strong>Testcross</strong></td><td>crossing a candidate to a fixed tester to measure its breeding value</td></tr>
+        <tr><td><strong>Tester</strong></td><td>the known, fixed partner line from the opposite heterotic pool</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Every figure in this document was recomputed from the raw archives and is reproducible from the
+  TriPlex repository: <code>scripts/</code> holds one file per pipeline stage,
+  <code>docs/</code> the working notes, <code>R/</code> the corrected mixed-model scripts.
+  Findings that contradict the supplied documentation are recorded with their evidence, and
+  claims that rest on unverified assumptions are flagged rather than smoothed over &mdash;
+  including several places where an earlier version of this analysis was wrong and has been
+  corrected.<br><br>
+  Written up so the team can pick any thread up without waiting on its author. Everything
+  described here runs end to end from a clean checkout; <code>python scripts/demo.py</code>
+  reproduces the full pipeline on generated data in about three seconds, without needing the
+  large source files.
+</footer>
+</main>
+</div>
+
+</body>
+</html>
