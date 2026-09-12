@@ -3,6 +3,15 @@ Population-by-population Ridge CV modeling for genomic selection.
 Streams merged_full.csv one population at a time -- never loads the full
 dataset in memory. Each population is ~1000 rows, trivially fits in 32GB.
 
+Outputs per line:
+  GCA_pred       -- cross-validated yield prediction (bu/acre)
+  GCA_obs        -- observed mean yield across environments
+  stability      -- 0-1 score; higher = more consistent across environments
+  pred_lo/hi     -- ±1 population CV-RMSE prediction interval
+  MST_obs        -- historical mean moisture at harvest
+  composite_score -- GCA_pred adjusted for moisture (commercial index)
+  composite_rank -- rank by composite_score (used for advance list)
+
 Run from the repo root:
     python3 run_modeling.py
 """
@@ -10,7 +19,7 @@ Run from the repo root:
 import pandas as pd
 import numpy as np
 import os, gc, time, warnings
-warnings.filterwarnings('ignore')   # suppress sklearn and pandas dtype chatter
+warnings.filterwarnings('ignore')
 
 from sklearn.linear_model import RidgeCV
 from sklearn.pipeline import Pipeline
@@ -27,6 +36,11 @@ CHUNKSIZE   = 3000
 # Values <100 are effectively unregularized at this scale and cause extrapolation.
 ALPHAS = [100, 1_000, 10_000, 100_000]
 
+# Economic weight: bu/acre value per unit moisture reduction.
+# Each 1-point drop in harvest moisture saves ~$0.04/bu in drying costs;
+# at ~125 bu/acre average, that is ~5 bu/acre-equivalent per moisture unit.
+MST_ECON_WEIGHT = 5.0
+
 t0 = time.time()
 
 # ── 1. Column catalogue ───────────────────────────────────────────────────────
@@ -35,12 +49,10 @@ with open(DATA_PATH) as f:
 
 snp_cols = [c for c in all_cols if c.startswith('M') and c != 'MST']
 env_cols = [c for c in all_cols if c.startswith('X')]
+has_mst  = 'MST' in all_cols
 n_snp    = len(snp_cols)
 
-# Features: SNP markers + environmental covariates only.
-# Agronomic traits (PHT, EHT, etc.) are in-season measurements unavailable
-# before planting and are excluded to prevent leakage.
-print(f"SNP: {n_snp} | Env: {len(env_cols)}")
+print(f"SNP: {n_snp} | Env: {len(env_cols)} | MST column: {has_mst}")
 print(f"Features per population: SNP (population-specific subset) + {len(env_cols)} env\n")
 
 # ── 2. Baseline (LOC+YEAR group mean, read non-SNP cols only) ────────────────
@@ -63,13 +75,14 @@ def process_pop(buf, cluster_id, pop_num):
 
     Key safeguards:
       - SNP values clipped to [0, 2] (imputed dosage range) before modeling.
-        Out-of-range values from imputation QC failures would otherwise cause
-        the linear model to extrapolate wildly for individual lines.
-      - OOF predictions clipped to ±3 SD of observed yield within this
-        population, preventing single corrupted-marker lines from dominating
-        the cross-population ranking.
-      - Alpha range [100, 1000, 10000, 100000] appropriate for genomic
-        selection where p_SNP ~ n_lines.
+      - OOF predictions clipped to ±3 SD of observed yield within this population.
+      - Alpha range [100, 1000, 10000, 100000] appropriate for genomic scale.
+
+    New outputs per line:
+      - stability: 1 / (1 + CV_yield) where CV = std/mean across environments.
+        Higher = more consistent across locations/years (broadly adapted).
+      - pred_lo/hi: GCA_pred ± pop_rmse, a 1-sigma prediction interval.
+      - MST_obs: historical mean moisture at harvest (lower is commercially preferred).
     """
     df = pd.concat(buf, ignore_index=True).dropna(subset=['YLD_BE'])
     n_lines = df['LINE_UNIQUE_ID'].nunique()
@@ -113,19 +126,43 @@ def process_pop(buf, cluster_id, pop_num):
     pop_rmse = float(np.sqrt(mean_squared_error(y[valid], oof[valid])))
     pop_r2   = float(r2_score(y[valid], oof[valid]))
 
+    # Pre-compute per-line MST means (fast groupby instead of row-by-row lookup)
+    if has_mst and 'MST' in df.columns:
+        line_mst = df.groupby('LINE_UNIQUE_ID')['MST'].mean().to_dict()
+    else:
+        line_mst = {}
+
     out = []
     for line in np.unique(lines):
         m = lines == line
         v = ~np.isnan(oof[m])
         if v.sum() == 0:
             continue
+
+        line_yields = y[m]
+        gca_pred    = float(oof[m][v].mean())
+
+        # Stability: inverse of coefficient of variation across environments.
+        # Single-environment lines get 0.5 (unknown stability, treated as neutral).
+        if len(line_yields) > 1 and float(line_yields.mean()) != 0:
+            cv        = float(line_yields.std()) / abs(float(line_yields.mean()))
+            stability = round(1.0 / (1.0 + cv), 4)
+        else:
+            stability = 0.5
+
+        mst_val = line_mst.get(line, np.nan)
+
         out.append({
             'LINE_UNIQUE_ID': line,
             'CLUSTER_ID':     int(cluster_id),
             'POP_NUM':        int(pop_num),
-            'GCA_pred':       float(oof[m][v].mean()),
-            'GCA_obs':        float(y[m].mean()),
+            'GCA_pred':       round(gca_pred, 4),
+            'GCA_obs':        round(float(line_yields.mean()), 4),
+            'stability':      stability,
             'n_env':          int(m.sum()),
+            'pred_lo':        round(gca_pred - pop_rmse, 2),
+            'pred_hi':        round(gca_pred + pop_rmse, 2),
+            'MST_obs':        round(float(mst_val), 3) if not np.isnan(mst_val) else np.nan,
         })
     return out, pop_rmse, pop_r2
 
@@ -175,13 +212,25 @@ if buf:
         r2_list.append(r2)
     pop_count += 1
 
-# ── 5. Aggregate and rank ─────────────────────────────────────────────────────
+# ── 5. Aggregate, build composite index, and rank ─────────────────────────────
 print(f"\nAggregating {len(all_results)} line-predictions across {pop_count} populations...")
 
 results_df = pd.DataFrame(all_results)
-results_df['rank']    = results_df['GCA_pred'].rank(ascending=False).astype(int)
-results_df            = results_df.sort_values('rank').reset_index(drop=True)
-results_df['advance'] = results_df['rank'] <= 20
+
+# Yield rank (reference)
+results_df['yield_rank'] = results_df['GCA_pred'].rank(ascending=False).astype(int)
+
+# Composite selection index: reward high yield, penalize high moisture.
+# Moisture penalty uses deviation from fleet mean so lines with missing MST
+# are not unfairly penalized -- they receive a zero moisture adjustment.
+mst_global_mean = results_df['MST_obs'].mean()
+mst_deviation   = results_df['MST_obs'].fillna(mst_global_mean) - mst_global_mean
+results_df['composite_score'] = results_df['GCA_pred'] - MST_ECON_WEIGHT * mst_deviation
+results_df['composite_rank']  = results_df['composite_score'].rank(ascending=False).astype(int)
+
+# Advance list and final sort driven by composite rank
+results_df['advance'] = results_df['composite_rank'] <= 20
+results_df = results_df.sort_values('composite_rank').reset_index(drop=True)
 
 os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 results_df.to_csv(OUTPUT_PATH, index=False)
@@ -190,16 +239,19 @@ elapsed   = time.time() - t0
 mean_rmse = np.mean(rmse_list) if rmse_list else float('nan')
 mean_r2   = np.mean(r2_list)   if r2_list   else float('nan')
 
-print(f"\n{'='*58}")
+print(f"\n{'='*62}")
 print(f"=== Full-data model summary ===")
-print(f"  Baseline RMSE : {baseline_rmse:.2f} bu/acre  (R² {baseline_r2:.3f})")
-print(f"  Ridge CV RMSE : {mean_rmse:.2f} bu/acre  (R² {mean_r2:.3f})")
-print(f"  Features      : population SNPs + {len(env_cols)} env covariates")
-print(f"  Populations   : {pop_count}")
-print(f"  Lines ranked  : {len(results_df)}")
-print(f"  Advance list  : {int(results_df['advance'].sum())} lines")
-print(f"  Elapsed       : {elapsed/60:.1f} min")
-print(f"\nTop 10 lines:")
-cols_show = ['LINE_UNIQUE_ID', 'rank', 'GCA_pred', 'GCA_obs', 'advance']
+print(f"  Baseline RMSE   : {baseline_rmse:.2f} bu/acre  (R² {baseline_r2:.3f})")
+print(f"  Ridge CV RMSE   : {mean_rmse:.2f} bu/acre  (R² {mean_r2:.3f})")
+print(f"  Features        : population SNPs + {len(env_cols)} env covariates")
+print(f"  Populations     : {pop_count}")
+print(f"  Lines ranked    : {len(results_df)}")
+print(f"  Advance list    : {int(results_df['advance'].sum())} lines (by composite score)")
+print(f"  MST econ weight : {MST_ECON_WEIGHT} bu/acre per moisture unit")
+print(f"  Global MST mean : {mst_global_mean:.2f}")
+print(f"  Elapsed         : {elapsed/60:.1f} min")
+print(f"\nTop 10 lines (by composite rank):")
+cols_show = ['LINE_UNIQUE_ID', 'composite_rank', 'GCA_pred', 'MST_obs',
+             'composite_score', 'stability', 'pred_lo', 'pred_hi', 'advance']
 print(results_df.head(10)[cols_show].to_string(index=False))
 print(f"\nRankings saved -> {OUTPUT_PATH}")
