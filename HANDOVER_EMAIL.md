@@ -1,23 +1,28 @@
-# Handover email — draft
+# Team email — draft
 
-Replace `[Teammate]` with her name, and check the report link is shared before sending
+Replace `[Teammate]` with her name, and confirm the report link is shared before sending
 (artifacts are private by default — open the page and use the share menu).
 
 ---
 
-**Subject:** Stepping back from the hackathon — full handover of my analysis
+**Subject:** Joining remotely tomorrow — analysis so far, and let's lock in a call
 
 ---
 
 Hi all,
 
-I'm sorry to say I won't be able to take part in the hackathon itself. I wanted to let you
-know as early as I could, and to make sure nothing I've done goes to waste — everything is
-documented and handed over below.
+I won't be able to make it to the venue tomorrow, but I'll be fully available online
+throughout and can keep contributing in real time. Happy to set up a **Zoom or Discord** room
+so I can join standups, pair on whatever's blocking, and turn things around quickly — whatever
+works best for the rest of you. **What time do you want to start, and which platform?** I'll
+be on from the beginning and will stay reachable all day.
+
+To make the remote thing work, here's everything I've done so far, written up properly so
+nobody has to wait on me to get moving.
 
 **Full write-up:** https://claude.ai/code/artifact/57451d72-2462-4ce7-84c5-ec3901e62ce1
 
-**Code:** the `data-audit` branch on our repo — 9 commits, pushed and ready
+**Code:** the `data-audit` branch — 10 commits, pushed and ready
 (https://github.com/AdvayBhatt/TriPlex/tree/data-audit)
 
 The write-up is about an hour's read and assumes no plant-breeding background. Every acronym
@@ -52,18 +57,19 @@ lost — each with a measured number attached. That "here's what we tried and wh
 section is probably worth as many marks as the model itself, because it's the part most teams
 can't produce.
 
-### What I'd do next
+### Where I can be most useful tomorrow
 
-In priority order, all written up in section 16:
+Happy to take any of these remotely — tell me which you want me on:
 
 1. **Spatial adjustment of the unreplicated trials** — the untried lever with the clearest
    rationale. It attacks plot error directly, which is what attenuates every correlation in
-   the analysis. Needs plot row/range coordinates; worth checking whether the archive has them.
+   the analysis. Needs plot row/range coordinates; someone at the venue could check whether
+   the archive has them.
 2. **Within-family prediction** — two-thirds of the genetic variation sits there and the
    current model barely touches it (r = 0.11). The largest unexploited opportunity, and the
    hardest.
-3. **A factor-analytic multi-environment model** — would replace several hand-rolled
-   estimators with one properly specified fit.
+3. **The write-up and submission package** — this is genuinely easier to do remotely than in a
+   noisy room, so it's a natural thing for me to own if that helps.
 
 ### [Teammate] — on your R script
 
@@ -82,7 +88,8 @@ A working version is in `R/` and gives a clean decomposition: environment 62%,
 population × environment 11%, population 5.6%, residual 21.5%. **Your instinct about the
 interaction term was right** — it just needed to be at population level, where there are ~169
 plots per cell and it's actually estimable. At line level there's one plot per cell, so it's
-mathematically confounded with error.
+mathematically confounded with error. Happy to walk through it on the call if that's easier
+than reading it.
 
 ### Reproducing it
 
@@ -90,7 +97,7 @@ Everything runs from a clean checkout. `python scripts/demo.py` runs the entire 
 about three seconds on generated data, without needing the 141 MB source files — that also
 doubles as the "judge mode" the brief asks for.
 
-Happy to answer questions any time. Genuinely sorry not to be there for it, and good luck.
+Let me know the platform and start time and I'll be there. Looking forward to it.
 
 Best,
 Dhanush
