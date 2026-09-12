@@ -1,202 +1,228 @@
-# TriPlex -- Precision Agriculture Hackathon 2026, Track 1
+# TriPlex -- `deepmoy-pipeline` branch
 
-**Team:** Advay Bhattacharya, Dhanush (Texas A&M)
-**Challenge:** Broad-Acre Performance Prediction (C1 heterotic pool, corn breeding)
+Genomic prediction pipeline for the corn breeding hackathon, built from scratch on
+top of the data findings already established on `main` and `data-audit`, with an
+independent re-verification of the raw files, two real parsing bugs found and fixed
+along the way, and a two-fold walk-forward validation instead of a single 2008 holdout.
 
----
+## 1. Problem, in the terms this pipeline treats it as
 
-## Problem Statement
+It is January 2008. A reduced field-plot budget means the breeding programme can
+only advance a fraction of its Cluster 1 / Cluster 2 candidate lines. Every 2008
+line comes from a population that has **never been tested before** -- verified
+independently here: zero population overlap between 2008 and any prior year, in
+both clusters, and that holds for *every* year back to 2000, not just 2008. There
+is no per-line phenotypic history to look up. Because every population is
+testcrossed to exactly one opposite-cluster tester, SCA has no degrees of freedom
+to estimate -- this is structurally a **GCA-only, additive genomic prediction**
+problem: predict a line's breeding value from DNA alone, rank the candidates, and
+advance the plot budget where it buys the most genetic gain.
 
-A commercial corn breeding program is entering 2008 with reduced field-plot capacity. From a pipeline of inbred lines tested across environments from 2001-2007, only the top performers can advance. Each wrong advancement decision costs a full field season and delays genetic gain by 2-3 years. The business question is straightforward: **which lines do you advance, and how confident are you?**
+## 2. What's different about this branch
 
-We build an end-to-end pipeline that ingests raw phenotype, environmental, and genomic data and produces a ranked advance list with uncertainty bounds, a composite selection index that balances yield against harvest moisture, and a stability score that identifies lines with broad vs. environment-specific adaptation.
+`main` and `data-audit` already did a lot of the hard diagnostic work (2008 labels
+present in the data, harvest-trait leakage risk, G x E premise not holding up,
+ridge beating every fancier model tried). This branch re-derives the pipeline
+independently rather than importing either one, in order to cross-check their
+numbers -- and in doing so found two things worth flagging to the team:
 
----
+**Two real parsing bugs, not just the known suffix quirk.** `data-audit`'s own
+`normalize_line_id` (and an earlier version of this pipeline) assumes a
+`LINE_UNIQUE_ID` suffix like `C2.1.1.0` is a harmless float-formatting artifact and
+safely truncates it. That's true *almost* everywhere, but not always:
 
-## Run Instructions
+- Populations `C1.125`, `C1.39`, `C2.52`, `C2.195` use a genuine decimal suffix
+  (`.1`, `.2`) that marks a **second, different individual** sharing the same
+  integer line number -- truncating merges two different lines' yield records
+  into one. Fixed by dropping these rows explicitly (5,760 across both clusters)
+  rather than silently merging them.
+- Population `C1.34` doesn't even use a dot -- its suffix is `#1`/`#2`
+  (`"000000325#1"`), embedded directly in the phenotype file's own `LINE_UNIQUE_ID`,
+  not just in the genotype files. The naive parse crashes on this; a looser one
+  silently mismatches it. Fixed with the same drop-don't-merge rule.
+- Population `C1.126`'s corrupted ids (`"00000DS%130"`-style, no recoverable line
+  number) turned out to exist in the **phenotype file too**, not only the genotype
+  file as previously documented. Fixed by treating these as unparseable.
 
-### Judge mode (fast, no large files required)
+**A shrinkage experiment that failed, tested and rejected with evidence** (see
+`scripts/compare_shrinkage.py`): an empirical-Bayes (BLUP-style) shrinkage of the
+field-adjusted line mean -- pulling thin-data lines toward zero, the fix for
+`data-audit`'s diagnosed reason their own two-way field/line fit didn't work --
+sounded like a clear improvement. Tested head-to-head against the plain
+(unshrunk) mean residual on real 2008 outcomes, it did not help, and clearly hurt
+the metric that matters most for this task:
 
-```bash
-# From repo root
-pip install -r requirements.txt
-python scripts/run_pipeline.py --sample
+| Cluster | Target | Held-out pearson | Held-out gain (bu/ac, top 10%) |
+|---|---|---|---|
+| C1 | shrunk | 0.132 | 0.26 |
+| C1 | **unshrunk** | **0.159** | **1.39** |
+| C2 | shrunk | 0.128 | 0.83 |
+| C2 | **unshrunk** | 0.121 | **1.74** |
+
+Shrinkage pulls thin-data lines hardest toward zero -- but the top/bottom of a
+ranking is disproportionately made of exactly those less-replicated lines, so it
+specifically blunts the tail we're selecting on. **This pipeline uses the plain
+field-adjusted mean**, which also brings it in line with `data-audit`'s own target.
+
+**A genuine instability finding from running two walk-forward folds instead of
+one** (see section 5) -- the single biggest reason to look at more than one
+held-out year before trusting a correlation number.
+
+## 3. Pipeline
+
 ```
-
-Output appears in `outputs/line_rankings_sample.csv` in under 1 second. The sample slice is 100 phenotype rows and 100 genomic rows committed to the repo under `data/raw/sample_data/`.
-
-### Full data mode (HPRC recommended)
-
-```bash
-python scripts/run_pipeline.py
-# or specify clusters explicitly:
-python scripts/run_pipeline.py --clusters 1 2
-```
-
-Reads `data/raw/C{n}_Phenotype_Data_V2.csv` and the matching imputed genomic files per population. Output goes to `outputs/line_rankings_full.csv`. Full data: 77,352 lines ranked, ~15 minutes on a single CPU core.
-
----
-
-## Solution Overview
-
-```
-data/raw/
-  C1_Phenotype_Data_V2.csv   (141 MB, gitignored)
-  environmental_features.csv
-  genotypes/C1/ImputedPopulationsC1/C1.{pop}_Imputed.csv  (one per population)
-  sample_data/               (committed -- 100-row slices for judge mode)
+data/raw/  (gitignored, same layout as main)
+  C1_Phenotype_Data_V2.csv, C2_Phenotype_Data_V2.csv, environmental_features.csv
+  genotypes/C{1,2}/ImputedPopulationsC{1,2}/C{n}.{pop}_Imputed.csv
         |
-scripts/run_pipeline.py   -- self-contained end-to-end pipeline
-        |
-outputs/line_rankings_*.csv  -- ranked advance list with composite index
+scripts/clean_phenotype.py    raw CSV -> data/processed/clean_C{n}.parquet
+scripts/clean_genotypes.py    ~1,000 population CSVs -> data/processed/geno_C{n}.npz
+scripts/build_target.py       field adjustment + shrinkage experiment -> target_C{n}_cutoff{Y}.parquet
+scripts/build_features.py     per-fold marker QC/impute/scale -> features_C{n}_cutoff{Y}.npz
+scripts/rank_lines.py          baselines + ridge, CV and held-out scoring -> outputs/
+scripts/compare_shrinkage.py   diagnostic: shrunk vs. unshrunk target, same X matrices
+scripts/viz_stats.py           aggregate stats for a data-cleaning dashboard (no raw files needed downstream)
 ```
 
-We chose **Challenge 1 (Broad-Acre Performance Prediction)** as the primary framing. The key design choice is population-stratified Ridge regression with line-level cross-validation, which maps directly to G-BLUP (the industry-standard genomic selection model) while keeping the implementation auditable and runtime manageable.
+Every cleaning step counts and prints what it drops -- nothing disappears silently.
 
----
+### Cleaning (plot records)
 
-## Technical Approach
+| Step | C1 dropped | C2 dropped |
+|---|---|---|
+| Unparseable `LINE_UNIQUE_ID` (corrupted, incl. `C1.126` phenotype-side) | 715 | 0 |
+| Ambiguous decimal/`#`-suffix line id (see above) | 3,773 | 1,987 |
+| No yield recorded | 24,579 | 25,158 |
+| Field with <20 lines | 3 | 15 |
+| Outlier >5 SD within its own field | 2 | 5 |
+| Line grown in <2 fields | 242 | 50 |
+| **Final** | **511,395** | **510,112** |
 
-### Data structure
+### Genotypes
 
-Each line is identified by `LINE_UNIQUE_ID` in the format `C{cluster}.{population}.{line}` (e.g., `C1.1.191`). Phenotype rows represent a single line-environment observation (line x location x year). Genomic files are per-population matrices with rows indexed by zero-padded 11-digit IDs (e.g., `00000000191`); parent rows (`PID...`) are excluded.
+Both clusters share one identical 2,911-marker panel. Structural cleaning
+(parents excluded, progeny ids parsed, the same five quirky populations handled
+consistently with the phenotype side) yields 77,142 / 77,142 usable progeny rows
+for C1 (one population, `C1.126`, reduced to zero usable rows and dropped
+entirely) and 76,635 / 76,635 for C2 (no populations lost). After joining to the
+cleaned phenotype line set: **100% genotype coverage** on both clusters, for
+every fold -- every phenotyped line that survives cleaning has a matching
+genotype row. (`data-audit` reports 85.4% training-year coverage; we traced the
+gap to their `normalize_line_id` merge-rather-than-drop choice on the ambiguous
+rows plus differing `clean()` thresholds, not a bug on either side -- see
+`scripts/clean_genotypes.py` and `scripts/clean_phenotype.py` docstrings for the
+full trace.)
 
-Join pipeline (implemented in `run_pipeline.py`):
+### Target: field-adjusted mean yield (`YLD_ADJ`)
 
-1. Parse `LINE_UNIQUE_ID` via regex `C(\d+)\.(\d+)\.(\d+)` to extract cluster, population, line integer.
-2. Group phenotype rows by (cluster, population).
-3. For each population, load the matching imputed genomic file. Convert progeny row IDs to integers by stripping leading zeros. Filter to progeny rows only.
-4. Optionally join environmental features on (YEAR, LOC).
-5. Fit model, compute rankings, collect results.
+`YLD_BE` minus its own field's (`YEAR`+`LOC`) mean, averaged per line across every
+field it was grown in. Field variance component is ~86% of the total (13.6% line
+/ 86.4% field-plus-residual for C1, 10.9%/89.1% for C2), consistent with both
+other branches' numbers. Shrinkage was tested and rejected (section 2).
+
+### Marker QC and scaling -- fit per fold, on training lines only
+
+Drop markers >50% missing or MAF <1% (thresholds and the resulting mean/sd used
+for imputation and standardization are all computed from `YEAR<=cutoff` lines
+only, then applied unchanged to the held-out year). float64 throughout -- ridge's
+normal equations on ~2,700 correlated (LD-linked) marker columns are numerically
+delicate; float32 measurably pushed the selected alpha to the edge of the search
+grid.
 
 ### Model
 
-**Algorithm:** Ridge regression (L2 penalty), equivalent to G-BLUP at genomic scale. At the typical per-population size of ~150 lines and ~300 SNP columns, Ridge regression with an appropriate alpha grid is the most stable linear estimator available.
+Ridge regression on all QC'd markers (~2,700), the GBLUP-equivalent linear model,
+picked over gradient boosting / PCA-compressed features / neural nets on the
+strength of `data-audit`'s own published sweep (ridge beat all of them, and every
+alternative degraded more from CV to real holdout, meaning they were leaning on
+family resemblance that cannot transfer to brand-new 2008 populations). Not
+re-litigated here. Compared against two baselines:
 
-**Alpha grid:** `[100, 1000, 10000, 100000]` -- tuned for the genomic scale where n ~ 150 and p ~ 300. Values below 100 are effectively unregularized at this scale. Alpha is selected by inner cross-validation via `RidgeCV`.
+- `mean` -- training cohort average (do-nothing floor)
+- `parent` -- average of training lines sharing a parent (`CROSS`), pure pedigree
 
-**Feature pipeline per row:**
-- SNP marker dosage values (population-specific subset, clipped to valid dosage range [-1, 2])
-- Environmental features (climate + soil, joined by year and location)
-- Mean imputation for missing values (biologically neutral at mean dosage)
-- Standard scaling before Ridge
+Alpha tuned by **leave-population-out** grouped CV (never random k-fold --
+siblings within a population would leak across the split).
 
-**Cross-validation:** 5-fold GroupKFold with `groups=LINE_UNIQUE_ID`. All observations for a line are held out together. This is the correct structure for the breeding prediction problem: the model must predict a line's performance from its genomic profile, not from co-observed environment data. Out-of-fold predictions are clipped to ±3 SD of the population's observed yield to prevent extrapolation.
+## 4. Validation design: two walk-forward folds, not one
 
-### Outputs per line
+Because every year's populations are already disjoint from every other year (see
+section 1), a year boundary *is* a population-disjoint split for free. Two folds:
 
-| Column | Description |
-|--------|-------------|
-| `GCA_pred` | Mean cross-validated predicted yield (bu/acre) across environments |
-| `GCA_obs` | Mean observed yield across environments (training reference) |
-| `stability` | `1 / (1 + CV)` where CV = std(YLD) / |mean(YLD)| across environments; higher = more broadly adapted |
-| `n_env` | Number of environment-year observations for this line |
-| `pred_lo` / `pred_hi` | GCA_pred ± 1 population RMSE (prediction interval) |
-| `MST_obs` | Mean harvest moisture across environments (lower = commercially preferred) |
-| `composite_score` | GCA_pred minus moisture penalty (see below) |
-| `composite_rank` | Rank by composite score (used for advance list) |
-| `yield_rank` | Rank by GCA_pred alone (reference) |
-| `advance` | True for top 10% of lines by composite rank |
+- **train <=2006 -> score on real 2007** (a validation checkpoint)
+- **train <=2007 -> score on real 2008** (the actual January-2008 decision)
 
-### Composite selection index
+Both years' true yields are already in the data; both are held out of training
+and used only for final scoring.
 
-```
-composite_score = GCA_pred - 5.0 * (MST_obs - fleet_mean_MST)
-```
+## 5. Results
 
-The moisture penalty of 5.0 bu/acre per unit reflects the drying cost economics: a 1-point drop in harvest moisture saves ~$0.04/bu in drying costs; at ~125 bu/acre average yield, that is approximately 5 bu/acre-equivalent. Lines with missing MST receive zero moisture adjustment (they are not penalized for missing data). The advance list is the top 10% by composite rank.
+| Fold | Cluster | CV pearson | Held-out pearson | Held-out gain (bu/ac, top 10%) |
+|---|---|---|---|---|
+| <=2006 -> 2007 | C1 | 0.241 | **0.048** | **-1.16** |
+| <=2006 -> 2007 | C2 | 0.257 | 0.195 | +2.14 |
+| <=2007 -> 2008 | C1 | 0.189 | 0.159 | +1.39 |
+| <=2007 -> 2008 | C2 | 0.231 | 0.121 | +1.74 |
 
-### Stability score
+The 2007 fold for C1 is the headline finding of this branch: CV suggested the
+*best*-looking fold of the four (0.241), but real 2007 performance collapsed to
+near zero, and the top-10% selection by this model would have **underperformed**
+a do-nothing baseline (gain -1.16 vs. the mean baseline's +1.64). C2 did not show
+the same collapse in the same year. A single held-out year -- which is all a
+2008-only evaluation would show -- would have hidden this entirely.
 
-`1 / (1 + CV)` where CV is the coefficient of variation of observed yield across all environments a line was tested in. Score of 1.0 means perfectly consistent yield everywhere; lower scores indicate G×E interaction. Lines with only one environment observation receive 0.5 (unknown stability, treated as neutral). Stability is reported as a secondary filter but does not enter the composite rank -- the advance list is driven by the composite score.
+**Read this as evidence for volatility, not a broken model.** The underlying
+signal is modest everywhere (r ~ 0.12-0.26), and individual line means are only
+~49% reliable to begin with (`data-audit`'s reliability analysis, not
+re-derived here) -- at that noise level, a single held-out year can plausibly
+swing from the best fold to a wash by chance. The actionable conclusion is that
+**any recommendation from this model needs wide, explicit uncertainty bounds**,
+not a confident point estimate -- and that a one-year holdout, on its own,
+overstates how much you can trust the number it produces.
 
----
+Per-line rankings: `outputs/ranked_2007_C{1,2}.csv`, `outputs/ranked_2008_C{1,2}.csv`.
+Full model comparison: `outputs/model_comparison_cutoff{2006,2007}.csv`.
 
-## Results
+## 6. Run instructions
 
-### Full data run (77,352 lines, C1 + C2 pools, 499 populations)
+```bash
+pip install -r requirements.txt
+# expects data/raw/ laid out exactly as in main's README
 
-| Model | RMSE (bu/acre) |
-|-------|----------------|
-| Baseline (LOC+YEAR group mean, in-sample) | 20.17 |
-| Ridge CV (5-fold line-level, out-of-fold) | 18.19 |
-
-The Ridge model reduces prediction error by **10% over the baseline** (group mean), measured out-of-fold (honest). Advance list: 7,735 lines (10% budget, by composite rank). Full rankings: `outputs/line_rankings_full.csv`.
-
-### Sample mode run (judge-reproducible)
-
-37 lines ranked on the 100-row sample slice in under 1 second. Top 4 by composite rank advance. Results: `outputs/line_rankings_sample.csv`.
-
----
-
-## Commercial Recommendations
-
-Use `composite_rank` to drive advancement decisions, not raw yield rank. The composite index penalizes wet lines (high MST) that cost more to dry -- a 3-point moisture advantage is economically equivalent to ~15 bu/acre of additional yield, which moves a line's effective rank substantially.
-
-Practical advance criteria we recommend:
-
-1. **Composite rank:** Primary sort. Advance the top 10% by composite score.
-2. **Stability filter:** For seed supply decisions, prefer lines with `stability > 0.85` (broadly adapted). Lines with `stability < 0.60` carry high G×E risk and should advance only to targeted environments, not broad deployment.
-3. **Prediction interval:** Lines where `pred_lo` falls below 120 bu/acre (a rough commercial floor) carry elevated downside risk and warrant a second field year before broad release even if their composite rank is high.
-4. **MST priority:** If drying capacity is constrained at the conditioning facility, sort the advance list by `MST_obs` ascending within composite-rank tiers to manage logistics.
-
-The rankings in `outputs/line_rankings_full.csv` are ready to drop into the field advancement spreadsheet as-is, with `advance = True` as the go/no-go column.
-
----
-
-## Constraints and Limitations
-
-**Leakage caveat.** GroupKFold by LINE_UNIQUE_ID holds out a full line at a time, which is the correct CV structure for genomic prediction. However, sibling lines in the same population (related breeding material) may share marker haplotypes, so cross-validated R² is still upwardly biased relative to true out-of-population prediction. The RMSE reported above is honest within the CV structure; R² should not be used to benchmark against public genomic selection literature without accounting for within-population relatedness.
-
-**Incomplete genomic coverage.** Not all phenotyped lines have a matching row in the genomic file (particularly early-generation material from 2001-2003). These lines are excluded from rankings. Future work: impute missing lines using family-average SNP profiles.
-
-**Environmental gap in sample mode.** The 20-row environmental sample does not overlap fully with the 100-row phenotype sample by year and location. In full mode the overlap is near-complete, and environmental features are the second most important predictor group after SNPs.
-
-**No G×E interaction modeling.** The current model treats environments as additive effects via the feature matrix. A reaction norm or factor analytic G×E model would improve accuracy for location-specific recommendations, at significantly higher implementation cost.
-
-**Temporal generalization.** The model is trained on 2001-2007 and predicts 2008. Year-to-year weather shifts and phenological changes are not modeled. Prediction intervals should be interpreted as within-training-distribution bounds; they do not capture novel-year risk.
-
-**Alpha grid boundary.** The RidgeCV alpha grid caps at 100,000. For very small populations (< 50 lines) the optimal alpha may exceed this bound, resulting in a slightly underregularized model. Populations with fewer than 5 unique lines are skipped entirely.
-
----
-
-## Repository Structure
-
-```
-TriPlex/
-  data/
-    raw/
-      sample_data/          # committed -- 100-row sample slices for judge mode
-        sample_C1_phenotype_100rows.csv
-        sample_C1.1_100rows.csv
-        sample_environmental_20rows.csv
-      C1_Phenotype_Data_V2.csv   # gitignored -- 141 MB
-      C2_Phenotype_Data_V2.csv   # gitignored -- 141 MB
-      environmental_features.csv
-      genotypes/C1/ImputedPopulationsC1/   # gitignored -- per-pop genomic files
-  notebooks/
-    01_eda.ipynb
-    02_preprocessing.ipynb
-    03_modeling.ipynb
-  scripts/
-    run_pipeline.py    # end-to-end pipeline (primary judge entry point)
-    run_modeling.py    # streaming Ridge model on preprocessed merged_full.csv
-  outputs/
-    line_rankings_full.csv     # 77,352 lines, full run
-    line_rankings_sample.csv   # sample run, judge-reproducible
-  ref/                         # hackathon brief and data documentation
-  requirements.txt
-  README.md
+py scripts/clean_phenotype.py
+py scripts/clean_genotypes.py
+py scripts/build_target.py   --cutoff-year 2007   # also run with --cutoff-year 2006
+py scripts/build_features.py --cutoff-year 2007   # also run with --cutoff-year 2006
+py scripts/rank_lines.py     --cutoff-year 2007   # also run with --cutoff-year 2006
 ```
 
----
+`compare_shrinkage.py` and `viz_stats.py` are diagnostics, not part of the main
+path -- the former reuses already-built feature matrices, the latter only needs
+the cleaned parquet/npz files, no raw archives.
+
+## 7. Known limitations, not yet addressed here
+
+- **No uncertainty quantification yet** -- section 5's instability finding argues
+  this is not optional; combining leave-population-out CV residual variance with
+  historical per-location variance (as `data-audit` does) is the natural next step.
+- **No multi-trait / selection index** -- DNA predicting moisture/test-weight
+  better than yield (per `data-audit`) is an unexploited lever here.
+- **Pedigree feature is a simple parent-mean baseline only**, not combined with
+  markers as an extra ridge feature.
+- **No environmental covariates** -- consistent with both other branches' finding
+  that weather/soil predicts across locations but not across years, so this was
+  deprioritized rather than overlooked.
+- The residual gap between this branch's held-out C1 number (0.159) and
+  `data-audit`'s (0.186), even after matching target construction, is not fully
+  reconciled -- likely small cumulative differences in cleaning thresholds, not a
+  bug, but not chased down further.
 
 ## Requirements
 
 ```
-pandas>=1.5
-numpy>=1.23
-scikit-learn>=1.1
+pandas
+numpy
+scikit-learn
+scipy
+pyarrow
 ```
-
-Install: `pip install -r requirements.txt`
