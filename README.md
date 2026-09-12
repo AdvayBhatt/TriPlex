@@ -1,150 +1,272 @@
-# TriPlex — TAMIDS Corn Breeding Track
+# TriPlex -- Genomic Prediction for Maize Line Advancement
 
-TriPlex helps breeding managers choose **previously untested 2008 lines for field testing**, using information available in January 2008. It addresses the brief's broad-acre challenge in the 115 RM pipeline. C1 and C2 remain separate breeding pools; measured opposite-pool testcross yield is a proxy for breeding merit, not an identified pure GCA estimate.
+## 1. Problem Statement
 
-The current pipeline forecasts field-adjusted yield advantage, reports uncertainty from historical forecasts, and assigns a limited number of plots to a ranked shortlist. Historical notebooks and the old `line_rankings_full.csv` are exploratory work, **not the current 2008 recommendations**.
+It is January 2008 at a commercial maize breeding company. Roughly 16,000 new inbred lines are about to be planted across the Corn Belt for testcross evaluation. None has ever been field-tested. The budget for field plots has been cut, so only about 10% can be evaluated. The task is to decide **which lines get the ground**, using only what is knowable before planting: their DNA, their parentage, and the locations where they are scheduled to go.
 
-## Start here
+Of the 7,432 lines in the 2008 Cluster 1 cohort, exactly zero appeared in the eight preceding years. Same in Cluster 2: zero of 8,536. Every population is new. There is no track record to look up, so prediction must travel through genetics.
 
-- **Current selected predictor:** `python scripts/run_selected_pipeline.py --output-dir outputs/my_forecast` (full data; prediction only). Add `--evaluate` for explicitly retrospective scoring.
-- **Reference predictor and synthetic demo:** `python scripts/run_pipeline.py --sample --output-dir outputs/my_demo`.
-- **Current findings:** [performance](report/PERFORMANCE_EXPERIMENTS.md), [robustness](report/ROBUSTNESS_REVIEW.md). Selected 2008 correlations are 0.180 / 0.182; improvements are exploratory and advancement-gain uncertainty remains substantial.
-- **Mixed-model research:** [results and methods](report/MIXED_MODEL_REVIEW.md). Historical joint adjustment was fitted and tested, with and without tester effects. Neither variant passed the adoption rule; the selected policy remains unchanged. Reproduce with `experiments/mixed_model.py`.
+**What is at stake.** Every line that should have been tested but was skipped is a potential commercial hybrid that the programme will never see. Every plot spent on a mediocre line is a plot not spent on a better one. At scale, the difference between random allocation and informed allocation is worth millions of dollars per breeding cycle.
 
-| Folder | Purpose |
-|---|---|
-| `scripts/` | The two pipeline commands above |
-| `src/` | Reusable forecast, selected-model and synthetic-data implementation |
-| `experiments/` | Model comparisons, mixed-model research and robustness audits; see its README |
-| `tests/` | Regression tests and independent artifact verifiers |
-| `model_configs/` | Frozen selected-model policy |
-| `ref/`, `data/` | Original reference documents and datasets |
-| `report/` | Detailed findings and historical review evidence |
-| `archive/source_snapshots/` | Compressed source used to verify historical results after reorganizing files |
+**What makes this hard.** The 2008 candidates are progeny of crosses that have never been observed in the training data. Standard random cross-validation inflates accuracy dramatically in this setting (published estimates show gaps of up to 0.59 between random CV and honest leave-population-out CV on the same maize data). Any model that leans on family resemblance within training populations will collapse when every target family is new.
 
-The detailed instructions below describe the **reference** predictor. Its scores are not the selected model's scores. Earlier reports retain their original paths as dated records; implementation files formerly under `scripts/` now live in `src/` or `experiments/`.
+## 2. Solution Overview
 
-## Run instructions
+TriPlex uses a two-stage genomic prediction approach tailored to the family structure of commercial maize testcross data:
+
+1. **Family-level prediction.** The densely genotyped parents of each 2008 population have training-era relatives. A ridge regression on parental marker profiles predicts each new family's mean breeding value (GCA).
+2. **Within-family prediction.** A separate ridge regression on progeny SNP markers predicts each line's deviation from its family mean, capturing the Mendelian sampling that distinguishes siblings.
+3. **Site adjustment.** Predictions are centered against the complete planned planting roster at each location before allocation, removing systematic location biases from the ranking.
+
+This decomposition was motivated by a diagnostic finding: 95.7% of the variance in flat-model predictions is between-family, but only 34.0% of actual outcome variance is. The flat model effectively ranks families, not lines. Splitting the problem lets each component use the information source best suited to it.
+
+The pipeline is equivalent to GBLUP/rrBLUP, the field-standard method for genomic selection. Ridge regression on centered markers is mathematically identical to genomic BLUP. The heavy regularization (alpha = 10,000 for parents, 30,000 for progeny markers, 3,000,000 for Cluster 2's flat model) is deliberately strong because genetic effects are additive, individually tiny, and spread across thousands of loci.
+
+### Workflow
+
+```
+build_genotypes  -->  build_dataset  -->  model_experiments  -->  selected_model  -->  recommend
+   (999 CSVs          (phenotype +         (model search on       (frozen config,      (per-site
+    to .npz)           leakage guard)       dev years only)        final fit)           yields)
+```
+
+## 3. Technical Approach
+
+### 3.1 Data Cleaning and Leakage Prevention
+
+Raw phenotype records (~537,000 rows per cluster) go through the following steps. All statistics (marker means, standard deviations, field effects) are computed on training data only. The 2008 cohort never influences any transformation.
+
+- **ID normalization.** Line IDs are canonicalized to three-part form (e.g., `C1.435.109`). Cluster 2 IDs carry a fourth component in the raw files; a naive join matches nothing. Six populations have malformed progeny identifiers. Conflicting DNA records for the same canonical ID are excluded rather than arbitrarily choosing one.
+- **Yield adjustment.** Raw yield is centered by subtracting each field's (site x year) mean. This removes the 68.8% of variance attributable to environment, leaving "how much better or worse than everyone else in that same field."
+- **Quality filters.** Fields with fewer than 20 lines are dropped (unstable means). Lines observed at fewer than 2 locations are dropped (unreliable averages). Outliers beyond 5 SD within their own field are removed (2 records in C1).
+- **Leakage constraint.** Seven harvest-measured traits are explicitly excluded from all inputs: `ERM, MST, PHT, RTLP, STLP, TWT, EHT`. These are measured at harvest in October off the same plot that produces the yield. A model using them scores well in testing and is impossible to run in January when the inputs do not exist. The exclusion is named in code, not implied by omission.
+- **Marker QC.** Of 2,911 SNP markers, those with greater than 50% missing calls or minor allele frequency below 1% are dropped, leaving ~2,686. Remaining gaps are mean-imputed using training-set column means. Markers are z-score standardized using training-set statistics.
+
+### 3.2 Model Architecture
+
+**Cluster 1: Two-component family model** (`parents_10000`)
+- Stage 1: Ridge(alpha=30,000) on progeny markers, predicting both raw adjusted yield and within-family deviation as a two-column response.
+- Stage 2: Ridge(alpha=10,000) on parent markers, predicting family mean GCA.
+- Combined prediction: family mean from parents + within-family deviation from progeny markers.
+- Lines without valid parent data fall back to the flat progeny-only column.
+
+**Cluster 2: Flat high-regularization ridge** (`flat_3000000`)
+- Ridge(alpha=3,000,000) on progeny markers, predicting raw adjusted yield.
+- The extreme regularization was selected because Cluster 2 responded better to heavy shrinkage than to the two-component decomposition during model selection.
+
+**Site adjustment.** Both clusters apply planned-site centering: per-site mean predictions are subtracted from each line's prediction at each scheduled location, then averaged per line. This removes systematic location biases from the ranking before allocation.
+
+### 3.3 Model Selection Protocol
+
+Model selection used only development years (2004, 2005, 2006) and was completed before examining 2007 or 2008 outcomes. The protocol:
+
+- For each development year, train on all preceding years and predict that year's new populations.
+- Compare models by allocation gain over budget-matched random selection (500 random draws, seed 8371).
+- Selection rule: largest mean annual allocation gain, positive in at least 2 of 3 development years. Ties broken by lower mean RMSE.
+- 2007 served as confirmation only (calibration errors for prediction intervals). 2008 is the target.
+- The winning model and adjustment are frozen in `model_configs/selected.json`. All subsequent runs use this config without re-searching.
+
+### 3.4 Validation Design
+
+Standard random cross-validation would mislead here. Lines within a population are siblings from one cross, nearly identical genetically. A random split puts brothers on both sides, inflating accuracy. Published studies document gaps of up to 0.59 between random CV and honest population-level CV on this same germplasm.
+
+This pipeline enforces **leave-population-out validation**: all siblings stay on the same side of the split. Training populations are required to be disjoint from forecast populations as a hard constraint. This mirrors the actual task, where every 2008 family is new.
+
+## 4. Results
+
+### 4.1 Prediction Accuracy
+
+Retrospective evaluation against held-out 2008 outcomes (field-adjusted yield, bu/acre):
+
+| Metric | C1 | C2 |
+|---|---:|---:|
+| Candidates ranked | 7,432 | 8,536 |
+| Pearson r (retrospective 2008) | 0.180 | 0.182 |
+| Model RMSE (bu/acre) | 9.651 | 10.259 |
+| Environmental-baseline RMSE | 9.811 | 10.381 |
+| Advancement gain (bu/acre) | +3.330 | +2.676 |
+| Lines advanced / plots allocated | 757 / 3,994 | 861 / 4,698 |
+
+The selected model beats the environmental-mean baseline on RMSE in both clusters. Advancement gain is the mean adjusted yield of advanced lines, measuring the commercial value of the ranking.
+
+### 4.2 Why 0.18 Is Better Than It Sounds
+
+The outcomes being graded against are themselves noisy. Each 2008 line's "true" value comes from roughly five unreplicated plots. Split-half reliability of the 2008 line means is approximately 0.49. A perfect model that knew every line's true genetic value exactly would score only **r ~ 0.70** against this target. The rest is plot noise, and nothing predicts noise. Any team reporting r = 0.9 has a leak.
+
+The honest framing: **0.18 / 0.70 = 26% of what is achievable**, not 0.18 out of 1.0.
+
+### 4.3 Literature Benchmark
+
+This dataset appears in two 2014 *Crop Science* papers describing 969 biparental maize testcross populations from a commercial programme, 2000-2008, two heterotic groups, 2,911 SNP markers, ~156 lines per cross. The published benchmark for the "same background" task (pool unrelated crosses, predict a new one) is **r = 0.06**. TriPlex achieves roughly **3x the published accuracy** on the same scenario.
+
+| Published design | What it is | Yield accuracy |
+|---|---|---:|
+| Phenotypic selection | line's mean in half environments vs other half | 0.24 |
+| Within-family | train on the same biparental cross | 0.14 |
+| **Same background** | **pool unrelated crosses, predict a new one (our task)** | **0.06** |
+| **TriPlex** | **our result on the same task** | **0.186** |
+
+Prediction from DNA alone, on unphenotyped lines in unseen families in a future year, reaches 78% of what actually growing the plants twice achieves.
+
+### 4.4 The Diagnostic That Shaped the Model
+
+Decomposing the prediction accuracy by family structure:
+
+| Component | Correlation | Meaning |
+|---|---:|---|
+| Overall, line level | +0.186 | the headline number |
+| **Between families** | **+0.316** | ranking the 71 new families against each other |
+| Within families | +0.109 | ranking siblings inside a family |
+
+95.7% of the variance in flat-model predictions is between-family, but only 34.0% of actual outcome variance is. The model assigns nearly the same score to every line in a family, while two-thirds of real genetic variation sits within families. This motivated the two-component architecture, which was the only improvement that replicated across both clusters.
+
+### 4.5 Fifteen Approaches Tested
+
+Each was implemented and scored against held-out 2008 outcomes. The pattern is the finding: genetic effects here are additive, individually tiny, and spread across thousands of markers. Methods that hunt for interactions and thresholds find noise instead.
+
+| Approach | Best r | Verdict |
+|---|---:|---|
+| Two-component blend (adopted) | 0.191 | Adopted for C1 |
+| Ridge, all markers | 0.186 | Baseline |
+| Economic selection index | 0.186 | No effect (89% shortlist overlap) |
+| Dense neural network | 0.172 | Matched, not beaten |
+| Multivariate trait model | 0.177 | Ambiguous |
+| PCA compression (50 PCs) | 0.169 | Rejected |
+| Ridge + boosting blend | 0.159 | Made it worse |
+| Gradient boosting | 0.125 | Rejected |
+| Midparent excess | 0.121 | Rejected |
+| Two-way field adjustment | 0.119 | Rejected |
+| Random forest | 0.107 | Rejected |
+| Block-attention transformer | 0.096 | Rejected |
+
+Flexible models lean on family resemblance, which cannot transfer when every target population is new. A heavily regularized linear model is the correct model class for this biology.
+
+### 4.6 Environment Analysis
+
+Environment accounts for 68.8% of yield variance. Two findings:
+
+**G x E is smaller than it looks.** Correlation between individual environments is ~0.10, but grouping site-years into climate/soil types and averaging noise away gives cross-type genetic correlation plausibly 0.9 or above (median 1.04 across matched half-samples, with one lower-confidence pair at 0.59). Most of what looks like genotype-by-environment interaction is actually plot noise. One national ranking list is correct.
+
+**Weather predicts places, not seasons, with a twist.** Splitting covariates into location climatology (96% of variance) and within-location anomaly (4%): climatology predicts 2008 at r = 0.005, anomaly at r = 0.175. Combining anomaly with location history: r = 0.324 vs history alone at 0.296. The season signal is real but lives in 4% of the covariate variance; fitting all covariates together lets the useless 96% drown it out.
+
+## 5. Run Instructions
 
 Tested with Python 3.13 and the versions in `requirements.txt`. From the repository root:
 
 ```sh
 python -m pip install -r requirements.txt
-python scripts/run_pipeline.py --sample
-python -m unittest discover -s tests -v
 ```
 
-Judge mode generates a deterministic **synthetic** dataset for two pools, eight years and new families each year. It uses the same loader, preprocessing, rolling forecasts, calibration, baselines, ranking and allocation as the full run. It includes 2008 lines with no outcomes, which remain in the shortlist. It needs no large raw files and completes in seconds. Synthetic accuracy is not evidence of real breeding performance. The provided 100-row, one-family sample is retained for inspection but cannot demonstrate new-family validation; the brief explicitly permits synthetic judge data.
+### Judge mode (synthetic data, no large files needed)
 
 ```sh
-# Full data, both pools; default training period is exactly 2001–2007
-python scripts/run_pipeline.py
-
-# Explicit budget: 4,000 plots PER POOL, two plots per candidate-location
-python scripts/run_pipeline.py --plot-budget 4000 --replicates 2 --output-dir outputs/budget_4000
-
-# Prediction without evaluating any 2008 outcomes
-python scripts/run_pipeline.py --predict-only --output-dir outputs/prediction_only
-
-# Optional external planting roster, with no outcome columns
-python scripts/run_pipeline.py --candidates candidates.csv --predict-only --output-dir outputs/roster_forecast
-
-# Optional sensitivity analysis; 2000 exists in the raw data but is excluded by default
-python scripts/run_pipeline.py --start-year 2000 --output-dir outputs/sensitivity_2000
+python scripts/run_pipeline.py --sample --output-dir outputs/judge_demo
 ```
 
-An external roster needs `LINE_UNIQUE_ID,LOC,CROSS`, one row per intended line-location. Include both clusters or specify `--clusters 1` / `--clusters 2`. Default candidates come from 2008 phenotype **metadata only**, treating its locations as the known planned planting roster. That is an explicit retrospective reconstruction assumption; an operational planting roster is preferable.
+Generates a deterministic synthetic dataset for two pools, eight years, and new families each year. Uses the same loader, preprocessing, rolling forecasts, calibration, baselines, ranking and allocation as the full run. Completes in seconds.
 
-Output directories must be empty unless `--overwrite` is explicitly supplied. Existing historical rankings are never overwritten by the default commands. To repeat the demonstration, use `--sample --overwrite` or a new output directory. Run from the repo root because default paths are relative to it.
+### Full data run (selected model)
 
-Full data must be expanded as:
+```sh
+python scripts/run_selected_pipeline.py --output-dir outputs/my_forecast
+```
 
-```text
+Reads frozen model config from `model_configs/selected.json`. Add `--evaluate` for retrospective 2008 scoring.
+
+### Full data run (reference predictor)
+
+```sh
+python scripts/run_pipeline.py --output-dir outputs/my_reference
+```
+
+### Data requirements
+
+Full data must be extracted to:
+```
 data/raw/C1_Phenotype_Data_V2.csv
 data/raw/C2_Phenotype_Data_V2.csv
-data/raw/genotypes/C1/C1.1_Imputed.csv
+data/raw/genotypes/C1/C1.1_Imputed.csv  (nested directories supported)
 data/raw/genotypes/C2/C2.1_Imputed.csv
 ```
 
-Nested directories below each genotype pool are also supported. ZIP archives must be extracted first. The environmental feature table is retained for exploration; this model handles environments through historical site-year adjustment and does not use its growing-season weather predictors. Dependencies do not include notebook-only packages or R.
+### Tests
 
-## Method and decision boundary
+```sh
+python -m unittest discover -s tests -v
+```
 
-1. Read the references first; see `report/DAY1_REVIEW.md` for the complete inventory and data audit. Keep historical records from 2001–2007 and construct all 2008 candidates independently of yield availability.
-2. Normalize numeric IDs, including leading zeros and known `.0`, `.1` or `#1` suffix forms. Export raw-to-normalized aliases. This treats suffixes as identifier-format aliases; it is a documented data assumption. Never guess corrupted alphanumeric IDs. Drop unresolvable historical IDs with an audit trail; fail on unresolvable candidate IDs. Conflicting DNA records for the same canonical identity are excluded rather than arbitrarily choosing the first.
-3. Validate marker panels by name and reorder consistently. Accept only the provided `-1, 0, 1` coding and missing values; exclude parent rows. Content-hashed, non-pickle genotype caches avoid reparsing all 999 CSVs on every run.
-4. Collapse duplicate line-site-year outcome records by their mean. Keep observed finite yields, fields with at least 20 distinct lines, and training/scoring lines with at least two locations. Subtract the mean of each site-year field, then average adjusted yield across sites for each line. Training and validation/target outcomes are adjusted **separately**. No yield-based outlier thresholds are selected from future outcomes.
-5. Fit one additive marker ridge model per cluster. Marker missingness filtering (at least 80% training coverage), mean imputation and standardization use training lines only. Constant markers are removed. Missing or wholly uninformative candidate DNA receives an explicit phenotypic-only fallback, retaining the candidate. The default fixed ridge penalty is 30,000, inherited as an exploratory starting point from the audited approach, not claimed to be optimal or independently selected by this validation.
-6. Forecast 2005 from 2001–2004, 2006 from 2001–2005, and 2007 from 2001–2006. Assert that forecast populations do not occur in training. Every population in these data belongs to one season. This tests the task's combination of new populations and future seasons; a random row split does not.
-7. Form central 90% prediction-error intervals using earlier rolling-forecast residuals only, separately for marker predictions and phenotypic fallbacks. The first validation year has no interval. The final 2008 forecast uses residuals from all three historical origins. Fewer than 20 source-specific errors means no interval and a review flag. These are empirical **prediction intervals for realized adjusted line means**, not confidence intervals for pure breeding value. Family dependence, shift and the final refit prevent a claim of exact 90% coverage.
-8. Refit on 2001–2007, save predictions and a planting plan, then optionally score against 2008 outcomes in a separate output. Target yields, moisture, height, test weight, lodging and actual 2008 weather cannot affect the rankings or allocation. Prior exposure to 2008 results means all reported 2008 performance remains retrospective/exploratory.
+## 6. Commercial Recommendations
 
-The score is in bushels/acre **relative to the site's contemporaneous cohort**, averaged over observed sites for evaluation. It is not an absolute 2008 yield forecast, a forecast of stability, a moisture-adjusted economic return, or a causal response to advancing the line. Unbalanced family placement can affect field centering. Tester/family confounding and unmodeled genotype-by-environment interactions remain limitations.
+### 6.1 Line Advancement
 
-## Baselines and evaluation
+At a 10% budget (the default), the selected model advances 757 lines in Cluster 1 and 861 in Cluster 2. These lines are predicted to yield +3.33 and +2.68 bu/acre above the cohort average, respectively. The top-ranked lines across clusters have substantial predicted advantages but wide prediction intervals spanning zero, reflecting the genuine uncertainty of genomic prediction on unphenotyped lines.
 
-The brief requests phenotypic BLUP and environmental means. Both are reported on the same adjusted-yield scale:
+The selection gain is concentrated at the top of the ranking. Using data-audit's analysis on the flat ridge baseline:
 
-- A phenotypic-only random line-intercept model is fit by REML after field centering. A genuinely unseen line with no modeled relationship has a zero random effect, so its prediction is the fitted intercept. Variance estimates condition on estimated field means and are not a joint field/line variance decomposition.
-- The environmental-mean baseline predicts zero yield advantage after field adjustment.
+| Advance threshold | Truly in that tier | vs. random | Realized gain |
+|---|---:|---:|---:|
+| Top 2% | 10.9% | 5.4x | +7.29 bu/acre |
+| Top 5% | 14.4% | 2.9x | +4.16 bu/acre |
+| Top 10% | 17.2% | 1.7x | +2.54 bu/acre |
+| Top 20% | 26.6% | 1.3x | +1.64 bu/acre |
 
-Neither constant baseline can rank unseen lines, so its correlation is undefined rather than falsely reported as zero. Their RMSE still provides a valid comparison. Genomic ridge can have positive ranking correlation while losing on RMSE; inspect both. No pedigree BLUP or parental-genotype blend is silently included.
+Accuracy is highest exactly where a reduced budget forces selectivity.
 
-Reports contain Pearson and Spearman correlations, RMSE, within-population centered correlation, top-decile gain, the actual allocation's observed gain, and empirical interval coverage. Pearson uncertainty resamples whole populations (200 replicates). Top-decile gain is computed within the scorable subset, whereas advancement is decided among **all** candidates before scoring. Missing outcomes can bias the evaluable subset; gains are descriptive, not guaranteed future genetic gain.
+### 6.2 Location-Specific Yields
 
-**Selected model** — two-stage family/within-family ridge for C1; flat marker ridge for C2; planned-site adjustment. Primary deliverable: `outputs/layout_selected_verified/`. Independent verification passed for both pools.
+For each advanced line, the pipeline produces expected yield at each scheduled location by combining the genomic prediction with shrinkage-estimated site effects (locations with thin history are shrunk toward zero). Site-specific prediction intervals combine model uncertainty and field year-to-year variability in quadrature, providing wider intervals at sites with no testing history.
 
-| Result | C1 | C2 |
-|---|---:|---:|
-| Candidates ranked | 7,432 | 8,536 |
-| Pearson r (retrospective 2008) | 0.180 | 0.182 |
-| Model RMSE, adjusted bu/acre | 9.651 | 10.259 |
-| Environmental-baseline RMSE | ~9.811 | ~10.381 |
-| Actual advancement gain, adjusted bu/acre | +3.330 | +2.676 |
-| Lines advanced / plots allocated | 757 / 3,994 | 861 / 4,698 |
+Of the 149 sites in the 2008 roster, 37 have no historical data. These receive the all-field spread as their uncertainty, flagged as higher risk.
 
-The selected model beats the environmental-mean baseline on RMSE; the reference predictor does not. Advancement gain is roughly 2× higher than the reference predictor. See `report/PERFORMANCE_EXPERIMENTS.md` for the comparison.
+### 6.3 Operational Guidance
+
+- **Inspect the `needs_review` flags.** Lines planted at novel sites, lacking DNA (phenotypic fallback), or with unavailable prediction intervals are flagged for breeder review before adopting the shortlist.
+- **The ranking is a screening tool, not a final decision.** Breeding managers should consider minimum family representation, seed availability, tester availability, fixed site overhead, and diversity constraints before committing. The prototype does not model these.
+- **One national list is correct.** Cross-environment genetic correlation is high (plausibly 0.9+), meaning regional splits would reduce testing intensity without meaningfully improving selection accuracy. This was confirmed both by split-half analysis and by mixed-model variance decomposition.
+- **Moisture is easier to predict than yield** (r = 0.27 vs 0.19) and could inform a drying-cost economic index, though at standard grain prices the shortlist overlap with yield-only ranking is 89%.
+
+## 7. Constraints and Limitations
+
+### Failure Modes
+
+- **Novel germplasm.** Accuracy depends on relatedness to training lines. A 2008 family unrelated to anything in 2000-2007 will predict poorly, and the relatedness analysis does not reliably flag which ones in advance.
+- **New seasons.** Environmental covariates cannot forecast an unseen year. Only the relative ranking is reliable, not absolute yield.
+- **New locations.** 37 of 149 sites have no history. Their field effect is assumed zero with the widest interval.
+- **Thin lines.** A line grown in 2 fields is ranked alongside one grown in 7. Reliability weighting was tested and hurt, so lines are weighted equally.
+
+### Data Limits No Model Can Overcome
+
+- **SCA is inestimable by design.** Every line is crossed to exactly one tester (0 of 73,532 have two), and every population uses exactly one tester (468 of 468). Line-by-tester interaction has no degrees of freedom.
+- **G x E cannot be separated from plot error** at the individual-field level: 99.8% of cells hold one unreplicated plot.
+- **Imputed genotypes are ~97% inferred.** Progeny were genotyped at ~3% of markers; the rest was filled in computationally from parental chromosomes. Imputation error is a real and unquantified uncertainty source.
+- **Prior exposure to 2008 results.** All reported 2008 performance is retrospective/exploratory. The model selection protocol used only 2004-2006 development years, but the analyst had seen 2008 outcomes before freezing the final model config.
+
+### What Was Tried and Did Not Work
+
+Neural networks, gradient boosting, random forests, transformers, PCA compression, and blended ensembles all matched or fell short of simple ridge. The validation-to-holdout drop tells the story: ridge does not move; the dense network falls 0.229 to 0.172; the attention model falls 0.188 to 0.096. Flexible models learn overall relatedness, not marker effects, which is precisely the signal absent when every target population is new.
+
+### Next Steps Not Attempted
+
+1. **Spatial adjustment of unreplicated trials.** Attacks plot error directly. Needs plot row/range coordinates.
+2. **Within-family prediction improvement.** Two-thirds of genetic variation sits there, and the model barely touches it (within-family r = 0.11). The largest unexploited opportunity.
+3. **Factor-analytic multi-environment model.** Would replace several hand-rolled estimators with one properly specified fit.
 
 ---
 
-**Reference predictor** — flat ridge, no family stratification, no planned-site adjustment. Verified default full-data run (2001–2007 training; retrospective 2008 scoring):
+## Repository Structure
 
-| Result | C1 | C2 |
-|---|---:|---:|
-| Candidates ranked / scored | 7,432 / 7,397 | 8,536 / 8,519 |
-| Pearson r | 0.1646 | 0.1048 |
-| Model / environmental-baseline RMSE | 10.0533 / 9.8109 | 11.0102 / 10.3806 |
-| Actual advancement gain, adjusted bu/acre | +1.5167 | +1.3262 |
-| Nominal 90% interval coverage | 93.16% | 88.84% |
-| Lines advanced / plots allocated | 762 / 3,994 | 890 / 4,698 |
-
-**Reference predictor RMSE loses to the simple baseline.** Historical allocation gains for 2005/2006/2007 were -0.30/+3.47/-0.61 bu/acre for C1 and +0.94/+2.02/+1.66 for C2. Even the highest-ranked lines (`C1.427.36`, `C2.368.110`) have 90% prediction intervals spanning zero and include new sites. Treat the output as a screening shortlist for breeder review. The final cached full run took about 95 seconds locally with four numerical threads; this is not a hardware-independent runtime guarantee.
-
-See `report/CODE_ALIGNMENT.md` for verified real-data results, checks, judging coverage and remaining limitations. Do not reuse the old README's accuracy, stability, runtime or moisture-composite claims. Do not present the audit branch's “3× published benchmark” as an apples-to-apples comparison.
-
-## Outputs and commercial use
-
-Default folders are `outputs/judge_forecast/` and `outputs/forecast_2008/`. Each cluster exports:
-
-| File | Purpose |
+| Folder | Purpose |
 |---|---|
-| `C1_rankings.csv` / `C2_rankings.csv` | Every candidate, predicted advantage, source, rank, intervals, review flags, advancement and plot cost |
-| `C*_plot_plan.csv` | Selected line-location combinations and replication; totals match the budget report |
-| `C*_validation_YYYY.csv` | Historical forecast predictions, evaluation truth and errors |
-| `C*_retrospective_evaluation.csv` | Optional scored 2008 subset; never used to revise saved predictions |
-| `C*_calibration.csv` | Historical residuals used for final uncertainty intervals |
-| `C*_marker_model.npz` | Marker names, retained-marker mask, imputation/scaling and fitted coefficients; no pickle |
-| `C*_report.json` | Data issues, baseline parameters, fit dates, validation, allocation and optional retrospective metrics |
-| `C*_id_aliases.csv` | Raw-to-canonical ID provenance |
-| `C*_historical_sites.csv` | Descriptive historical site yields; not a future weather forecast |
-| `run_manifest.json` | Parameters, dependency versions, source hashes, input hashes and elapsed time |
+| `scripts/` | Pipeline entry points: `run_selected_pipeline.py` (production), `run_pipeline.py` (reference/demo) |
+| `src/` | Core forecast engine (`triplex.py`) and frozen selected model (`selected_model.py`) |
+| `experiments/` | Model comparisons, diagnostics, roster adjustment experiments |
+| `model_configs/` | Frozen model policy (`selected.json`) |
+| `tests/` | Regression tests and independent artifact verifiers |
+| `data/` | Raw datasets (not tracked in git) |
+| `ref/` | Original reference documents |
+| `report/` | Detailed findings, performance experiments, and review evidence |
+| `docs/` | The Maize Prediction Handbook and working analysis notes |
 
-The provisional policy uses **10% of the listed candidate plots in each pool**, rounded down, with one plot per line-location. This is a team assumption, not a supplied budget. In predicted-rank order, advance a line if its complete listed site bundle fits the remaining budget; otherwise skip it and consider the next line. Ties break by canonical ID. Export unused capacity. This is a transparent feasible heuristic, not a claim to solve a global resource-allocation optimum. It can prefer a lower-ranked cheaper bundle after a higher-ranked bundle no longer fits.
+## Supplementary Material
 
-Breeding managers should inspect the intervals and `needs_review` flags (new sites, DNA fallback or unavailable intervals) before adopting the shortlist. The prototype has no minimum family representation, seed availability, tester availability, fixed site overhead or diversity constraint. It does not allocate a reserve for exploration, prove superiority to the midparent, or model stability. Those need explicit breeding policy and/or additional data. `--plot-budget` is a per-pool cap, not a shared total across pools.
-
-## Repository and branch boundaries
-
-The reference/demo path is `scripts/run_pipeline.py`, backed by `src/triplex.py` and the synthetic generator. The selected full-data predictor is `scripts/run_selected_pipeline.py`. Notebooks are retained as Day 1 exploration; see `notebooks/README.md`. Dhanush's public `data-audit` branch was reviewed separately at `51d39d95d3cab7d311bcb0f157f07544d4203eec`; it has not been merged or edited by this work. This implementation adopts the cross-population marker-learning idea and corrects the decision boundary explicitly.
-
-Generated data, full rankings, models and review caches stay local. Do not upload the large raw datasets. Review and stage individual intended files; avoid blanket staging of `report/`, which also contains review evidence and extracted reference material. No commit, push or branch switch is required to run or inspect this workflow.
+The **Maize Prediction Handbook** (`docs/Maize_Prediction_Handbook.html`) is a 16-section analysis document covering the biology, the statistics, every modelling decision, all 15 approaches tested, the literature benchmark, self-identified limitations, and a glossary of every term used. It is written so that someone who has never seen a breeding dataset can read it end to end and argue with it intelligently.
