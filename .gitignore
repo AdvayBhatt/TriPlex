@@ -1,27 +1,43 @@
+# Raw data (too large / restricted)
 data/raw/C1_Phenotype_Data_V2.csv
 data/raw/C2_Phenotype_Data_V2.csv
 data/raw/environmental_features.csv
 data/raw/genotypes/
 data/processed/
 
-#sample data is committed
+# Sample data is committed
 
-outputs/
-
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 *.egg-info/
 .ipynb_checkpoints/
 
-#if using R
+# R
 .Rhistory
 .RData
 renv/library/
 
-#OS
+# OS
 .DS_Store
 Thumbs.db
 
-#secrets
+# Secrets
 .env
+
+# Outputs (large model artifacts, not for version control)
+outputs/model_comparison/
+outputs/mixed_model/
+outputs/mixed_confirmation_C1/
+outputs/robustness/
+outputs/robustness_v2/
+outputs/robustness_verified/
+outputs/selected_forecast/
+outputs/line_rankings_full.csv
+outputs/line_rankings_sample.csv
+
+# AI working files
+AGENTS.md
+report/review/
+archive/
