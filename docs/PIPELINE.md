@@ -201,6 +201,22 @@ cleaner measure of genetic merit and our real accuracy is better than the headli
 figure — but it changes the yardstick, so the noise ceiling would have to be
 re-derived for that target before claiming any improvement.
 
+**Weighting fields by how well they discriminate.** Fields differ enormously in how
+much signal they carry: correlating each plot against the line's mean from its
+*other* fields gives a median field quality of +0.243, with the best decile at
++0.466, the worst at +0.050, and 5.3% of fields actually *negative*. Averaging them
+equally is clearly throwing information away. Weighting by that quality
+nevertheless makes prediction worse:
+
+| Trained on | vs unweighted truth | vs weighted truth |
+|---|---|---|
+| Unweighted line means | **0.185** | **0.179** |
+| Field-quality-weighted means | 0.171 | 0.161 |
+
+Selection gain rose slightly (+2.73 vs +2.52) but correlation fell in both
+comparisons. The quality estimate is itself noisy, and weighting by a noisy
+estimate adds variance while shrinking the effective sample size.
+
 **Multi-trait stacking.** Predict all 8 traits from markers, then stack their
 out-of-fold predictions to predict yield. **Does not replicate across clusters:**
 
