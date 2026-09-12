@@ -137,6 +137,67 @@ not spend time on dominance/epistasis interaction terms.
 
 ---
 
+## Phase 2: the G×E premise does not hold up
+
+Two experiments, both negative, and together they should change the team's choice
+of challenge. Reproduce with `scripts/environment_model.py`.
+
+### Weather and soil cannot predict a year they have not seen
+
+Predicting a site-year's field effect from the 84 weather/soil covariates:
+
+| Validation | r |
+|---|---|
+| Random 5-fold (mixes years) | +0.223 |
+| Leave-one-**location**-out | +0.185 |
+| **Leave-one-year-out** | **−0.030** |
+| Held-out 2008 | −0.141 |
+
+The covariates generalise across *locations* but not across *years* — and predicting
+2008 is precisely a new-year problem. The model was learning "2004 was a good year",
+not "hot dry Junes hurt". Year alone is 15% of field-effect variance, and once year
+means are removed, within-year site differences are only weakly predictable
+(r ≈ 0.06–0.10).
+
+A location's own historical average beats the covariate model outright
+(**r = 0.259** vs −0.141), and is available for 112 of the 149 2008 site-years.
+
+### Line rankings barely reorder across environment types
+
+The important one. Site-years were grouped into 6 environment types by k-means on
+climate/soil PCs, then line performance was correlated between types:
+
+| Comparison | r |
+|---|---|
+| Median across environment-type pairs | **+0.357** |
+| Split-half *within* a single type (noise floor) | +0.265 |
+
+The cross-type correlation is **higher** than the within-type split-half. Adjusting
+the split-half for length (Spearman-Brown: 2r/(1+r) = 0.419 for a full type mean),
+the implied genetic correlation between environment types is ≈ **0.357 / 0.419 =
+0.85** — high. Lines rank largely the same everywhere once plot noise is averaged
+out.
+
+### This resolves the earlier ambiguity
+
+`gxe_diagnostic.py` found near-zero correlation between individual environments
+(r ≈ 0.10) and could not tell whether that was real G×E or plot noise. Now we can:
+grouping environments averages noise away, and the ranking consistency reappears.
+**It was overwhelmingly noise.**
+
+### What follows
+
+Environment-specific prediction has little headroom — there is not much
+location-specific signal to capture, and the covariates cannot forecast a new
+season anyway. **Broad-acre prediction of a line's average merit is the defensible
+target**, which is what the Phase 1 model already does.
+
+That is not a wasted phase. "We tested the genotype-by-environment premise and it
+does not hold, so we optimised the target that does" is a stronger story than
+building a G×E model that quietly underperforms — and the environment work still
+pays for itself through the two-way field adjustment, which gives cleaner line
+effects than simple subtraction.
+
 ## What this suggests for approach
 
 The zero-overlap finding argues for building the **genomic prediction path first** — it is the only

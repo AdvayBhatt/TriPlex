@@ -159,6 +159,45 @@ r ≈ 0.15–0.19 is modest. It is in the normal published range for predicting
 *entirely new families*, the hard case here. It is an honest baseline, not yet a
 winning number.
 
+## Approaches tested and rejected
+
+Each was ruled out with evidence rather than assumption. Worth reporting — showing
+what was tried and discarded is a rigor signal.
+
+**Compressing markers with PCA.** Swept 10 to 600 components; the best (k=400,
+r=0.169) still loses to ridge on all markers (0.186). PCA ranks directions by how
+much lines differ, which here is overwhelmingly *which family a line belongs to* —
+and every 2008 family is new, so that is the part that does not transfer. The
+signal we need is the small differences between siblings, which PCA discards as
+minor. Ridge instead keeps every direction and shrinks them all, so the
+sibling-level signal survives.
+
+**Two-stage: DNA → harvest traits → yield.** Capped by the data. Even handed the
+*true* measured values of all 7 harvest traits, predicting line yield tops out at
+r = 0.24 — and a real pipeline would have to predict those traits first,
+imperfectly, multiplying the loss. DNA predicts yield directly at 0.186. Routing
+through an intermediate cannot create information.
+
+**Multi-trait stacking.** Predict all 8 traits from markers, then stack their
+out-of-fold predictions to predict yield. **Does not replicate across clusters:**
+
+| | yield-only r | multi-trait r | Δ |
+|---|---|---|---|
+| C1 | 0.185 | 0.193 | +0.008 |
+| C2 | 0.151 | 0.148 | −0.003 |
+
+The C1 gain is within noise. Selection gain did rise in both (C1 2.52→3.19, C2
+2.30→2.64 bu/ac), but that metric depends on a small subset and is noisier than
+correlation, so it is not enough on its own to claim a win. Verdict: no reliable
+improvement for yield ranking.
+
+One genuinely useful by-product: **DNA predicts some traits better than it predicts
+yield.** Out-of-fold, on new families — test weight 0.293, moisture 0.271, versus
+yield at 0.187 (C1). Those traits are more heritable and less noisy. Yield is the
+hard one. This matters for the selection index, where predicted moisture and
+lodging are needed anyway and will be more trustworthy than the yield prediction
+itself.
+
 ## File map
 
 | Script | Produces |
