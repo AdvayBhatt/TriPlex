@@ -1,4 +1,7 @@
-"""Reproducible audit of the corn breeding dataset.
+"""RETROSPECTIVE DATA-AUDIT IMPORT. See scripts/README.md for limitations.
+Use scripts/run_selected_pipeline.py for the January forecast.
+
+Reproducible audit of the corn breeding dataset.
 
 Regenerates every structural claim the team is relying on, so nobody has to take
 the provided documentation (or a teammate) at their word. Several findings here
@@ -180,4 +183,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    print("Retrospective data-audit analysis; see scripts/README.md. "
+          "Use run_selected_pipeline.py for forecasts and plot budgets.", file=sys.stderr)
     main()

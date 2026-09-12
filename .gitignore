@@ -3,6 +3,7 @@ data/raw/C1_Phenotype_Data_V2.csv
 data/raw/C2_Phenotype_Data_V2.csv
 data/raw/environmental_features.csv
 data/raw/genotypes/
+data/raw/*.zip
 data/processed/
 
 # Sample data is committed
@@ -35,5 +36,7 @@ report/CODE_ALIGNMENT.md
 
 # AI working files
 AGENTS.md
+CLAUDE.md
+memory/
 report/review/
 archive/

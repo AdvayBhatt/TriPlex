@@ -1,5 +1,7 @@
 # Historical mixed-model experiment
 
+> Historical investigation. Paths to full outputs, archived sources and earlier review notes refer to local research artifacts, not files shipped in the public checkout. For current commands and a public derived shortlist, see the [README](../README.md) and [selected example](../docs/selected_recommendations.md).
+
 Completed 12 September 2026. **Retain the existing selected models for both pools.** The mixed-model experiment is implemented and independently checked, but neither variant earns replacement under the predeclared allocation-gain rule. No new 2008 evaluation was performed.
 
 ## C1 result

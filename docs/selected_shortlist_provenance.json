@@ -1,0 +1,101 @@
+{
+  "source_commit": "65511837ecbdcda2254f059caf3d7175e50429be",
+  "source_run": "outputs/layout_selected_verified",
+  "source_manifest_sha256": "decfddc463a47440fca8743888c59a2171e225cd09ac7a3bd1a8c045aae88a3b",
+  "forecast_sources_sha256": {
+    "run_selected_pipeline.py": "aedf5f1ff9f273a58001f38266d26f02877e1c85b1a5ea22d8f6d187df84db98",
+    "selected_model.py": "7905d6d7e5ea5fa32f4776647d893cf27a292211c2c59bccbdd3ab655d61aa43",
+    "model_experiments.py": "f3584f1de8cc269f63f4c8797abe2dd48bcbbcf862d5dabcbbd5589385550c24",
+    "roster_experiment.py": "c2637b4580c6bc6da2748d82a3cfd3a6e6dcb582f780ff3b159c81fd6af19504",
+    "select_model.py": "91f1d8dac44dce85862ce138a52f7efe529c385dab0e1ffdf173d1727ffa2d40",
+    "triplex.py": "30eab52f9feb09613fd27186946bcbc4b1a6de2a20dd6b3af5b9e5f68a44ee9f"
+  },
+  "policy": {
+    "status": "Frozen model config for submission",
+    "start_year": 2001,
+    "target_year": 2008,
+    "calibration_year": 2007,
+    "selection_years": [
+      2004,
+      2005,
+      2006
+    ],
+    "reference": "Complete planned candidate roster, fixed before allocation",
+    "clusters": {
+      "C1": {
+        "model": "parents_10000",
+        "adjustment": "site",
+        "slope": 1.0
+      },
+      "C2": {
+        "model": "flat_3000000",
+        "adjustment": "site",
+        "slope": 1.0
+      }
+    }
+  },
+  "policy_note": "Source run differs only in descriptive policy status; all numerical policy settings match.",
+  "selection": "First ten advance=true rows per pool, in saved rank order; no outcomes used for selection.",
+  "units": "Field-adjusted yield advantage in bu/acre; empirical 90% prediction intervals from 2007 residuals.",
+  "verification": "Numeric model and site adjustment rebuilt; intervals and greedy plot allocation reconstructed; all source hashes matched.",
+  "limitations": "Derived excerpt, not complete shortlist. Retrospective research with prior outcome exposure. Full source artifacts/data stay local.",
+  "clusters": {
+    "C1": {
+      "candidates": 7432,
+      "allocation": {
+        "plot_budget": 3994,
+        "plots_allocated": 3994,
+        "unused_plots": 0,
+        "lines_advanced": 757,
+        "replicates_per_location": 1
+      },
+      "retrospective_metrics": {
+        "scored": 7397,
+        "pearson": 0.17986546295506592,
+        "rmse": 9.65110634970344,
+        "baseline_rmse": 9.810900304842715,
+        "allocation_gain": 3.3295698932097313,
+        "interval_90_coverage": 0.908070839529539
+      },
+      "retrospective_truth_source": "outputs/selected_forecast_verified/C1_retrospective.csv",
+      "retrospective_truth_sha256": "6fbb61d53c4793ca56df099272b60b4894324e4877233fffacb8c7d7d14720fd",
+      "source_artifacts_sha256": {
+        "C1_rankings.csv": "2210449e136884010e1055ed997dc28f330db79617c8ffa4632c13504946603f",
+        "C1_candidate_roster.csv": "b4fcb9691a1ab7288dc139c5bfebaf21c691ab373de58326b66d478950fe4cde",
+        "C1_calibration.csv": "b48224a2463fcf5b520cd54127f8ff747465075100775fee46e8dd8f66c14b8a",
+        "C1_plot_plan.csv": "cf6d079d3ab50724d8472688acd4f616b64f99aac8ce2aecfae88829c53fcf80",
+        "C1_model.npz": "ea9db1e904626c94ced0c269c0b31a381a3e4405ee6cc6d2ebe1b2fd5943310c",
+        "C1_report.json": "b792587326f9a70c38d4cd4e40cdfa45071f318fcfc9a6075667ce5d75631d6f"
+      }
+    },
+    "C2": {
+      "candidates": 8536,
+      "allocation": {
+        "plot_budget": 4698,
+        "plots_allocated": 4698,
+        "unused_plots": 0,
+        "lines_advanced": 861,
+        "replicates_per_location": 1
+      },
+      "retrospective_metrics": {
+        "scored": 8519,
+        "pearson": 0.18184913226241398,
+        "rmse": 10.2588110185189,
+        "baseline_rmse": 10.380636054528692,
+        "allocation_gain": 2.675836585289058,
+        "interval_90_coverage": 0.8762765582814884
+      },
+      "retrospective_truth_source": "outputs/selected_forecast_verified/C2_retrospective.csv",
+      "retrospective_truth_sha256": "15e34e23de69e96c10c6c9f76ec33fb4fc8fb074b4635520976364d7dfb4083f",
+      "source_artifacts_sha256": {
+        "C2_rankings.csv": "851ecbfadb8e60edd20494c5e630c07204041e401799aabf67b20e1555b06262",
+        "C2_candidate_roster.csv": "05241aff1b0a750e9a02204ef8d4146913e81ec4ae79289375d517bfa2e214d4",
+        "C2_calibration.csv": "fc5e216794f4abdb1a0bfb14467eecaa342540523e9aaa01b0b1c2ea88e05162",
+        "C2_plot_plan.csv": "9ff1e942450ead87bb5edfbc0eb90878d89cf5e39ee2ee91c4ec3e2144f45761",
+        "C2_model.npz": "6a63e985ce1c3eaa16d450f40801d91172bda59c61f84856750291d613304c85",
+        "C2_report.json": "8e8ba8a310eb861b069776f58cb65f161ea3e0b2f08bab11095dd7df9d83169c"
+      }
+    }
+  },
+  "excerpt_sha256": "c21f320621f5839c9ed304bb8d6d3f09eb014ff8e8fc3736bffdda7c760e9fcf"
+}

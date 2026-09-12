@@ -1,4 +1,7 @@
-"""Phase 1: turn the raw files into one clean, leakage-free modelling table.
+"""RETROSPECTIVE DATA-AUDIT IMPORT. See scripts/README.md for limitations.
+Use scripts/run_selected_pipeline.py for the January forecast.
+
+Phase 1: turn the raw files into a retrospective modelling table based on observed outcomes.
 
 WHAT WE ARE PREDICTING, IN PLAIN TERMS
 --------------------------------------
@@ -178,9 +181,9 @@ def prepare_markers(geno_path: Path, lines, train_mask: np.ndarray,
                     log: dict | None = None) -> np.ndarray:
     """Filter, impute and standardise the marker matrix.
 
-    Everything is estimated on TRAINING lines only -- marker means for imputation,
-    and the centre/scale -- so no information from the held-out 2008 cohort leaks
-    into the transformation.
+    Imputation and centre/scale use training lines only. Missingness and allele-
+    frequency filters below use all supplied rows, including 2008. This historical
+    helper does not provide the forecast runner's training-only guarantees.
 
     float64 throughout: ridge on ~2,700 correlated columns is numerically delicate
     and float32 produces overflow warnings in the normal equations.
@@ -312,4 +315,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    print("Retrospective data-audit analysis; see scripts/README.md. "
+          "Use run_selected_pipeline.py for forecasts and plot budgets.", file=sys.stderr)
     main()

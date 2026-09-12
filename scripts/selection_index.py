@@ -1,4 +1,7 @@
-"""Selection index: rank on economic value, not yield alone.
+"""RETROSPECTIVE DATA-AUDIT IMPORT. See scripts/README.md for limitations.
+Use scripts/run_selected_pipeline.py for the January forecast.
+
+Selection index: rank on economic value, not yield alone.
 
 Advancement is not a yield contest. Grain delivered wet must be mechanically dried,
 and that cost is real. The public formulation used in maize variety filings is:
@@ -89,4 +92,7 @@ def main() -> None:
         run(c, args)
 
 if __name__ == "__main__":
+    import sys
+    print("Retrospective data-audit analysis; see scripts/README.md. "
+          "Use run_selected_pipeline.py for forecasts and plot budgets.", file=sys.stderr)
     main()

@@ -1,5 +1,7 @@
 # Model robustness review — 12 September 2026
 
+> Historical investigation. Paths to full outputs, archived sources and earlier review notes refer to local research artifacts, not files shipped in the public checkout. For current commands and a public derived shortlist, see the [README](../README.md) and [selected example](../docs/selected_recommendations.md).
+
 The selected models remain reasonable working models, but the performance work is not exhausted. Their error improvement is better supported than their improvement in scarce-plot allocation gain. C2's within-family prediction and both pools' uncertainty for sparsely tested lines deserve attention next. No trained model, policy, original result, raw dataset, branch or submission material was changed in this audit.
 
 The reference constraints remain January 2008 prediction from historical 2001–2007 records and decision-time information, separate breeding pools, and useful advancement under a plot cap. This review tests the existing field-relative yield target. It does not establish pure GCA, absolute yield or causal genetic gain. The reconstructed roster must represent information available at the decision, rather than an outcome-dependent reconstruction of who survived to harvest.

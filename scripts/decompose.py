@@ -1,4 +1,7 @@
-"""Two diagnostics that decide where the remaining effort should go.
+"""RETROSPECTIVE DATA-AUDIT IMPORT. See scripts/README.md for limitations.
+Use scripts/run_selected_pipeline.py for the January forecast.
+
+Two diagnostics that decide where the remaining effort should go.
 
 DIAGNOSTIC 1 -- where does our accuracy actually come from?
 A line's breeding value splits into two parts:
@@ -183,4 +186,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    print("Retrospective data-audit analysis; see scripts/README.md. "
+          "Use run_selected_pipeline.py for forecasts and plot budgets.", file=sys.stderr)
     main()

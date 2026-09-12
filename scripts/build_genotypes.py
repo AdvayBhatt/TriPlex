@@ -1,4 +1,7 @@
-"""Convert the per-population genotype CSVs into one fast-loading matrix per cluster.
+"""RETROSPECTIVE DATA-AUDIT IMPORT. See scripts/README.md for limitations.
+Use scripts/run_selected_pipeline.py for the January forecast.
+
+Convert the per-population genotype CSVs into one fast-loading matrix per cluster.
 
 The zips hold ~1,000 small CSVs. Reading them is not slow because of compression --
 it is slow because of CSV parsing (~35s for all of them, every single time). This
@@ -143,4 +146,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    print("Retrospective data-audit analysis; see scripts/README.md. "
+          "Use run_selected_pipeline.py for forecasts and plot budgets.", file=sys.stderr)
     main()

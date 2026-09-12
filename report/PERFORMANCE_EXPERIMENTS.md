@@ -1,5 +1,7 @@
 # Performance investigation — 12 September 2026
 
+> Historical investigation. Paths to full outputs, archived sources and earlier review notes refer to local research artifacts, not files shipped in the public checkout. For current commands and a public derived shortlist, see the [README](../README.md) and [selected example](../docs/selected_recommendations.md).
+
 ## Result
 
 The new fixed models improve the original corrected pipeline on the same 2008 candidate roster, target, scoring subset and plot budgets. Both now beat the zero/mean baseline on RMSE. The improvement comes from better regularization, parental information for C1, and making predictions relative to the other planned lines at each site. No future yield, harvest trait or actual growing-season weather enters prediction.

@@ -1,10 +1,13 @@
-"""Turn ranked lines into the actual commercial deliverable.
+"""RETROSPECTIVE DATA-AUDIT IMPORT. See scripts/README.md for limitations.
+Use scripts/run_selected_pipeline.py for the January forecast.
+
+Reproduce historical flat-model recommendations, not the selected forecast.
 
 The model outputs a relative score ("line C1.427.16 scores +14.7"), which is not
 something a breeding manager can act on. This script produces the three things the
 brief actually asks for:
 
-  1. WHICH LINES TO ADVANCE, under a stated plot budget, each with a prediction
+  1. WHICH LINES TO ADVANCE, under a fraction-of-lines quota (not a plot cap), each with a prediction
      interval and a flag for whether it is expected to beat its own parents.
 
   2. EXPECTED YIELD IN BUSHELS, at the specific locations where each line is
@@ -194,7 +197,7 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, default=Path("outputs"))
     ap.add_argument("--clusters", type=int, nargs="+", default=[1, 2])
     ap.add_argument("--budget", type=float, default=0.10,
-                    help="fraction of the cohort the plot budget allows")
+                    help="historical fraction-of-lines quota; NOT a site-plot budget")
     ap.add_argument("--alpha", type=float, default=30000)
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--interval", type=float, default=0.80)
@@ -207,4 +210,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    import sys
+    print("Retrospective data-audit analysis; see scripts/README.md. "
+          "Use run_selected_pipeline.py for forecasts and plot budgets.", file=sys.stderr)
     main()
