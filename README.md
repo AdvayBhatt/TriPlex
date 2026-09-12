@@ -183,6 +183,51 @@ overstates how much you can trust the number it produces.
 Per-line rankings: `outputs/ranked_2007_C{1,2}.csv`, `outputs/ranked_2008_C{1,2}.csv`.
 Full model comparison: `outputs/model_comparison_cutoff{2006,2007}.csv`.
 
+### Top-ranked 2008 lines (the production fold, train<=2007)
+
+`pred` is the ridge model's GCA estimate (bu/ac, field-adjusted scale); `y` is
+the line's real 2008 field-adjusted yield, shown for audit only -- it plays no
+part in ranking or training. Given the instability finding above, treat the
+ranking (which lines are near the top) as the useful signal, not the exact
+`pred` value for any one line.
+
+**Cluster 1**
+
+| line | pred | y (real 2008) | n_fields | population |
+|---|---|---|---|---|
+| C1.427.16 | 11.35 | 13.29 | 5 | 427 |
+| C1.427.36 | 11.31 | -13.49 | 5 | 427 |
+| C1.401.42 | 11.28 | 1.19 | 6 | 401 |
+| C1.379.88 | 11.14 | 10.67 | 5 | 379 |
+| C1.401.18 | 10.71 | -4.60 | 6 | 401 |
+| C1.427.85 | 10.57 | -8.03 | 5 | 427 |
+| C1.401.51 | 10.46 | -10.74 | 5 | 401 |
+| C1.401.81 | 10.40 | 6.24 | 6 | 401 |
+| C1.401.87 | 10.35 | -0.33 | 6 | 401 |
+| C1.401.7 | 10.26 | -4.51 | 6 | 401 |
+
+**Cluster 2**
+
+| line | pred | y (real 2008) | n_fields | population |
+|---|---|---|---|---|
+| C2.388.67.0 | 9.94 | 0.43 | 5 | 388 |
+| C2.424.142.0 | 9.37 | 15.56 | 5 | 424 |
+| C2.440.115.0 | 8.99 | 9.46 | 5 | 440 |
+| C2.440.102.0 | 8.98 | 8.22 | 5 | 440 |
+| C2.417.66.0 | 8.88 | 27.37 | 5 | 417 |
+| C2.417.78.0 | 8.83 | 15.09 | 5 | 417 |
+| C2.417.88.0 | 8.82 | 28.07 | 3 | 417 |
+| C2.388.65.0 | 8.79 | 17.80 | 4 | 388 |
+| C2.440.123.0 | 8.60 | 1.75 | 5 | 440 |
+| C2.417.62.0 | 8.60 | 12.16 | 4 | 417 |
+
+Note the scatter between `pred` and real `y` even within this top-10 -- C1.427.36
+was ranked #2 and actually underperformed badly (-13.49); C2.417.88.0 wasn't
+ranked #1 despite the single best real outcome (28.07). That's the r~0.13-0.16
+signal made concrete: the ranking carries real information in aggregate (see the
+gain metric in section 5), but is not reliable line-by-line, which is exactly
+why section 5 argues for uncertainty bounds over point estimates.
+
 ## 6. Run instructions
 
 ```bash
