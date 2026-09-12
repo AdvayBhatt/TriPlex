@@ -1,5 +1,5 @@
 {
-  "status": "Exploratory historical model selection; 2008 has been inspected",
+  "status": "Frozen model config for submission",
   "start_year": 2001,
   "target_year": 2008,
   "calibration_year": 2007,

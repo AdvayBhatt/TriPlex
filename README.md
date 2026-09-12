@@ -97,28 +97,28 @@ The honest framing: **0.18 / 0.70 = 26% of what is achievable**, not 0.18 out of
 
 ### 4.3 Literature Benchmark
 
-This dataset appears in two 2014 *Crop Science* papers describing 969 biparental maize testcross populations from a commercial programme, 2000-2008, two heterotic groups, 2,911 SNP markers, ~156 lines per cross. The published benchmark for the "same background" task (pool unrelated crosses, predict a new one) is **r = 0.06**. TriPlex achieves roughly **3x the published accuracy** on the same scenario.
+This dataset appears in two 2014 *Crop Science* papers describing 969 biparental maize testcross populations from a commercial programme, 2000-2008, two heterotic groups, 2,911 SNP markers, ~156 lines per cross. The published benchmark for the "same background" task (pool unrelated crosses, predict a new one) is **r = 0.06**. TriPlex achieves **r = 0.180-0.182**, roughly **3x the published accuracy** on the same scenario.
 
 | Published design | What it is | Yield accuracy |
 |---|---|---:|
 | Phenotypic selection | line's mean in half environments vs other half | 0.24 |
 | Within-family | train on the same biparental cross | 0.14 |
 | **Same background** | **pool unrelated crosses, predict a new one (our task)** | **0.06** |
-| **TriPlex** | **our result on the same task** | **0.186** |
+| **TriPlex (selected model)** | **C1 = 0.180, C2 = 0.182** | **0.180-0.182** |
 
-Prediction from DNA alone, on unphenotyped lines in unseen families in a future year, reaches 78% of what actually growing the plants twice achieves.
+Prediction from DNA alone, on unphenotyped lines in unseen families in a future year, reaches 75-76% of what actually growing the plants twice achieves.
 
 ### 4.4 The Diagnostic That Shaped the Model
 
-Decomposing the prediction accuracy by family structure:
+Decomposing the flat ridge baseline's accuracy by family structure (the diagnostic that motivated the two-component architecture):
 
 | Component | Correlation | Meaning |
 |---|---:|---|
-| Overall, line level | +0.186 | the headline number |
+| Overall, line level | +0.186 | flat ridge baseline |
 | **Between families** | **+0.316** | ranking the 71 new families against each other |
 | Within families | +0.109 | ranking siblings inside a family |
 
-95.7% of the variance in flat-model predictions is between-family, but only 34.0% of actual outcome variance is. The model assigns nearly the same score to every line in a family, while two-thirds of real genetic variation sits within families. This motivated the two-component architecture, which was the only improvement that replicated across both clusters.
+95.7% of the variance in flat-model predictions is between-family, but only 34.0% of actual outcome variance is. The flat model assigns nearly the same score to every line in a family, while two-thirds of real genetic variation sits within families. This motivated the two-component architecture (Section 3.2), which improved C1 from 0.186 to 0.191 and was the only improvement that replicated across both clusters.
 
 ### 4.5 Fifteen Approaches Tested
 
@@ -257,15 +257,15 @@ Neural networks, gradient boosting, random forests, transformers, PCA compressio
 
 | Folder | Purpose |
 |---|---|
-| `scripts/` | Pipeline entry points: `run_selected_pipeline.py` (production), `run_pipeline.py` (reference/demo) |
+| `scripts/` | Pipeline entry points (`run_selected_pipeline.py`, `run_pipeline.py`) and analysis scripts (`recommend.py`, `decompose.py`, `selection_index.py`) |
 | `src/` | Core forecast engine (`triplex.py`) and frozen selected model (`selected_model.py`) |
 | `experiments/` | Model comparisons, diagnostics, roster adjustment experiments |
 | `model_configs/` | Frozen model policy (`selected.json`) |
 | `tests/` | Regression tests and independent artifact verifiers |
 | `data/` | Raw datasets (not tracked in git) |
 | `ref/` | Original reference documents |
-| `report/` | Detailed findings, performance experiments, and review evidence |
-| `docs/` | The Maize Prediction Handbook and working analysis notes |
+| `report/` | Performance experiments, robustness review, mixed-model research |
+| `docs/` | The Maize Prediction Handbook |
 
 ## Supplementary Material
 

@@ -27,15 +27,11 @@ Thumbs.db
 .env
 
 # Outputs (large model artifacts, not for version control)
-outputs/model_comparison/
-outputs/mixed_model/
-outputs/mixed_confirmation_C1/
-outputs/robustness/
-outputs/robustness_v2/
-outputs/robustness_verified/
-outputs/selected_forecast/
-outputs/line_rankings_full.csv
-outputs/line_rankings_sample.csv
+outputs/
+
+# Internal review notes (not submission deliverables)
+report/DAY1_REVIEW.md
+report/CODE_ALIGNMENT.md
 
 # AI working files
 AGENTS.md
